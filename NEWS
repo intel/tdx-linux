@@ -1,4 +1,4 @@
-News in TDX adoption tdx-basic-v6.6rc2-2023.12.05 release:
+News in TDX adoption tdx-base-v6.6rc2-2023.12.05 release:
  * Components Version Details:
    - Base Kernel: https://github.com/torvalds/linux/tree/v6.6-rc2
    - Qemu: https://github.com/intel/qemu-tdx/tree/tdx-qemu-next-2023.9.21-v8.1.0
