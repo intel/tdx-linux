@@ -13,4 +13,4 @@ The aim is to provide a tested recipe of TDX patches with an upstream verifiable
 This repo contains patches that are necessary to build a base TDX host kernel environment, then boot a trusted virtual machine (TD VM) using Intel's TDX technology.
 Untar the tarball in folder "kernel-patch" and then apply all the patches to the recent vanilla kernel (See NEWS for kernel version and other components' version).
 
-Refer to the wiki page [Instruction to set up TDX host and guest](https://github.com/intel-sandbox/fyin.tdx.adoption/wiki/Instruction-to-set-up-TDX-host-and-guest) for how to build, configure the host OS and boot a TD VM. 
+Refer to the wiki page [Instruction to set up TDX host and guest](https://github.com/intel/tdx-linux/wiki/Instruction-to-set-up-TDX-host-and-guest) for how to build, configure the host OS and boot a TD VM. 
