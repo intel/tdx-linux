@@ -1,0 +1,51 @@
+The breakdown patches includes following (as apply order):
+
+1. Unify TDCALL/SEAMCALL and TDVMCALL assembly v4:
+   https://lore.kernel.org/lkml/cover.1692096753.git.kai.huang@intel.com/
+
+2. TDX host kernel support v14:
+   https://lore.kernel.org/lkml/cover.1697532085.git.kai.huang@intel.com/
+
+3. KVM: guest_memfd() and per-page attributes v12:
+   https://lore.kernel.org/all/20230914015531.1419405-1-seanjc@google.com/
+
+4. KVM: guest_memfd fixes:
+   https://lore.kernel.org/all/20230921203331.3746712-1-seanjc@google.com/
+
+5. 0001-x86-mtrr-Mask-out-keyid-bits-from-variable-mtrr-mask.patch  workaround patch for mtrr access during kernel booting.
+
+6. 0001-efi-unaccepted-Make-sure-unaccepted-table-is-mapped.patch   backport from 6.6-rc3. Without it, TDX guest crash during boot.
+
+7. KVM: guest_memfd(), X86: Common base for SNP and TDX (was KVM: guest memory: Misc enhancement) RFC v4:
+   https://lore.kernel.org/lkml/cover.1689893403.git.isaku.yamahata@intel.com/
+ 
+   Only four patches are needed and significant update from Isaku's branch:
+   0001-KVM-Add-new-members-to-struct-kvm_gfn_range-to-opera.patch
+   0002-KVM-x86-Add-is_vm_type_supported-callback.patch
+   0003-KVM-x86-mmu-Pass-around-full-64-bit-error-code-for-t.patch
+   0004-KVM-x86-Use-PFERR_GUEST_ENC_MASK-to-indicate-fault-i.patch
+
+8. KVM TDX basic feature support v16(minor conflict):
+   https://lore.kernel.org/kvm/cover.1697471314.git.isaku.yamahata@intel.com/T/#m09738a27ee506b81baf7335b93c4bf721b75460f
+
+9. Workaround patches from Isaku's upstream branch for old version TDX module:
+   0001-RFC-KVM-TDX-tdp_mmu-Use-workqueue-to-zap-TDX-Secure-.patch
+   0002-REVERTME-Bump-KVM_CAP-to-avoid-merge-conflict.patch
+   0003-REVERTME-Bump-KVM_EXIT_TDX-to-avoid-merge-conflict.patch
+   0004-REVERTME-Bump-KVM_EXIT_MEMORY_FAULT-to-avoid-merge-c.patch
+   0005-RFC-KVM-TDX-Make-TDH.VP.ENTER-preserve-RBP.patch
+   0006-REVERTME-x86-virt-tdx-Explicitly-save-restore-RBP-fo.patch
+   0007-REVERTME-KVM-TDX-Allow-NO_RBP_MOD-unsupported-case.patch
+   0008-REVERTME-KVM-TDX-Emulate-Xen-MTRR-disablement.patch
+   0009-REVERTME-KVM-TDX-Check-if-all-present-CPUs-are-onlin.patch
+   0010-KVM-Add-missing-trace-names-for-KVM-exit-reason.patch
+   0011-KVM-Add-trace-names-for-kvm-exit-reason-MEMORY_FAULT.patch
+   0012-KVM-selftests-Test-KVM_HC_MAP_GPA_RANGE.patch
+
+
+
+
+
+
+
+
