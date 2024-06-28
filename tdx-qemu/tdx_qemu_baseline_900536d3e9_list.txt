@@ -1,0 +1,61 @@
+*** HACK *** linux-headers: Update headers to pull in TDX API changes
+i386: Introduce tdx-guest object
+i386/tdx: Implement tdx_kvm_type() for TDX
+i386/tdx: Implement tdx_kvm_init() to initialize TDX VM context
+i386/tdx: Get tdx_capabilities via KVM_TDX_CAPABILITIES
+i386/tdx: Introduce is_tdx_vm() helper and cache tdx_guest object
+kvm: Introduce kvm_arch_pre_create_vcpu()
+i386/tdx: Initialize TDX before creating TD vcpus
+i386/tdx: Add property sept-ve-disable for tdx-guest object
+i386/tdx: Make sept_ve_disable set by default
+i386/tdx: Wire CPU features up with attributes of TD guest
+i386/tdx: Disable pmu for TD guest
+i386/tdx: Validate TD attributes
+i386/tdx: Support user configurable mrconfigid/mrowner/mrownerconfig
+i386/tdx: Implement user specified tsc frequency
+i386/tdx: Set kvm_readonly_mem_enabled to false for TDX VM
+i386/tdx: load TDVF for TD guest
+i386/tdvf: Introduce function to parse TDVF metadata
+i386/tdx: Parse TDVF metadata for TDX VM
+i386/tdx: Don't initialize pc.rom for TDX VMs
+i386/tdx: Track mem_ptr for each firmware entry of TDVF
+i386/tdx: Track RAM entries for TDX VM
+headers: Add definitions from UEFI spec for volumes, resources, etc...
+i386/tdx: Setup the TD HOB list
+i386/tdx: Populate TDVF private memory via KVM_MEMORY_MAPPING
+i386/tdx: Call KVM_TDX_INIT_VCPU to initialize TDX vcpu
+i386/tdx: Finalize TDX VM
+i386/tdx: handle TDG.VP.VMCALL<SetupEventNotifyInterrupt>
+i386/tdx: handle TDG.VP.VMCALL<GetQuote>
+i386/tdx: handle TDG.VP.VMCALL<MapGPA> hypercall
+i386/tdx: Handle TDG.VP.VMCALL<REPORT_FATAL_ERROR>
+i386/tdx: Wire TDX_REPORT_FATAL_ERROR with GuestPanic facility
+i386/tdx: Disable SMM for TDX VMs
+i386/tdx: Disable PIC for TDX VMs
+i386/tdx: Don't allow system reset for TDX VMs
+i386/tdx: LMCE is not supported for TDX
+hw/i386: add eoi_intercept_unsupported member to X86MachineState
+hw/i386: add option to forcibly report edge trigger in acpi tables
+i386/tdx: Don't synchronize guest tsc for TDs
+i386/tdx: Only configure MSR_IA32_UCODE_REV in kvm_init_msrs() for TDs
+i386/tdx: Skip kvm_put_apicbase() for TDs
+i386/tdx: Don't get/put guest state for TDX VMs
+docs: Add TDX documentation
+fixup! kvm/tdx: Ignore memory conversion to shared of unassigned region
+i386/tdx: Set core crystal clock for KVM lapic one shot timer
+i386/tdx: Implement debug property
+i386/tdx: Force x2apic mode and routing for TDs
+q35/mch: add property txt-locked to mch for TXT-LOCKED register
+q35: introduce pam property to enable/disable PAM support
+Make the default log mask to LOG_GUEST_ERROR from 0
+i386/tdx: Adjust the supported CPUID based on TDX restrictions
+i386/tdx: Make Intel-PT unsupported for TD guest
+i386/tdx: Update tdx_cpuid_lookup[].tdx_fixed0/1 by tdx_caps.cpuid_config[]
+i386/tdx: Integrate tdx_caps->xfam_fixed0/1 into tdx_cpuid_lookup
+i386/tdx: Integrate tdx_caps->attrs_fixed0/1 to tdx_cpuid_lookup
+Revert "RAMBlock: make guest_memfd require uncoordinated discard"
+hw/vfio: extract the generic part of vfio populate and discard
+memory: introduce convert_mem_attr() callback in memory listener
+KVM: invoke the memory region listener when memory attribute converted
+hw/vfio: implement convert_mem_attr() callback in vfio_memory_listener
+hw/vfio: skip static IOMMU mapping if restricted memory region
