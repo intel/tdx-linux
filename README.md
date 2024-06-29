@@ -5,14 +5,14 @@ and QEMU. The patch sets below track the bleeding edge state of
 pre-release Kernel and QEMU development branches. They are provided here
 for preview and test purposes only, and may be update frequently. Any
 feedback or issues should be reported as a reply to the latest upstream
-posting of the patch. See the linux-coco, linux-kvm, and qemu-devel
-archives for the most recent public posting of these patches.  Note that
+posting of the given patch. See the linux-coco, linux-kvm, and qemu-devel
+archives on lore.kernel.org for the most recent public posting of these patches. Note that
 there some temporary workarounds and shortcuts included while formal
 replacements are in development.
 
 Wait for these patches to be accepted by their respective upstream
-projects and wait for those upstream projects versions to be picked up
-by your Linux distribution provider before using them for any production
+projects, Next, wait for new releases of those upstream project versions to be picked up
+by your chosen Linux distribution provider before using them for any production
 use case.
 
 ## Repo Layout
