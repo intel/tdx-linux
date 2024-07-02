@@ -45,7 +45,6 @@ example,
     CONFIG_INTEL_TDX_HOST=y
     CONFIG_KVM=y
     CONFIG_KVM_INTEL=y
-    CONFIG_KVM_MMU_PRIVATE=y
     CONFIG_TDX_GUEST_DRIVER=y
     CONFIG_HYPERV=y
     ```
@@ -89,7 +88,8 @@ example,
     cp Build/OvmfX64/DEBUG_GCC5/FV/OVMF.fd ./OVMF.fd
     ```
 
-* Additional notes on Host and Guest setup and booting can be found in the [wiki](https://github.com/intel/tdx-linux/wiki/Instruction-to-set-up-TDX-host-and-guest).
+* Additional notes on Host and Guest setup and booting can be found in the [wiki](https://github.com/intel/tdx-linux/wiki/Instruction-to-set-up-TDX-host-and-guest). One thing not mentioned on the wiki: make sure TDX guest has "clearcpuid=mtrr" in its kernel command line.
+
 
 ## Specific notes for device passthrough to TD
 * `Host and Guest Kernel`
@@ -102,7 +102,7 @@ example,
     CONFIG_CRYPTO_ECRDSA=y
     ```
 * `Boot TD with GPU passthrough`
-  * To passthrough the GPU card to TD, say 4b:00.0, in addition to the normal cmdline to boot a TD, add the following additional cmdline to qemu
+  * To passthrough the GPU card to TD, say 4b:00.0, in addition to the normal cmdline to boot a TD, add the following additional cmdline to qemu (ensure to bind the device to a VFIO driver before initiating the virtual machine)
     ```
     -object iommufd,id=iommufd0 \
     -device pcie-root-port,id=pci.1,bus=pcie.0 \
