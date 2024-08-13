@@ -1,3 +1,5 @@
+i386/cpu: Introduce enable_cpuid_0x1f to force exposing CPUID 0x1f
+i386/sev: Call sev_es_set_reset_vector() only when sev is enabled
 *** HACK *** linux-headers: Update headers to pull in TDX API changes
 i386: Introduce tdx-guest object
 i386/tdx: Implement tdx_kvm_type() for TDX
@@ -9,7 +11,8 @@ i386/tdx: Initialize TDX before creating TD vcpus
 i386/tdx: Add property sept-ve-disable for tdx-guest object
 i386/tdx: Make sept_ve_disable set by default
 i386/tdx: Wire CPU features up with attributes of TD guest
-i386/tdx: Disable pmu for TD guest
+i386/cpu: introduce x86_confidential_guest_cpu_post_init()
+i386/tdx: implement tdx_cpu_post_init()
 i386/tdx: Validate TD attributes
 i386/tdx: Support user configurable mrconfigid/mrowner/mrownerconfig
 i386/tdx: Implement user specified tsc frequency
@@ -32,7 +35,6 @@ i386/tdx: Handle TDG.VP.VMCALL<REPORT_FATAL_ERROR>
 i386/tdx: Wire TDX_REPORT_FATAL_ERROR with GuestPanic facility
 i386/tdx: Disable SMM for TDX VMs
 i386/tdx: Disable PIC for TDX VMs
-i386/tdx: Don't allow system reset for TDX VMs
 i386/tdx: LMCE is not supported for TDX
 hw/i386: add eoi_intercept_unsupported member to X86MachineState
 hw/i386: add option to forcibly report edge trigger in acpi tables
@@ -47,15 +49,38 @@ i386/tdx: Implement debug property
 i386/tdx: Force x2apic mode and routing for TDs
 q35/mch: add property txt-locked to mch for TXT-LOCKED register
 q35: introduce pam property to enable/disable PAM support
-Make the default log mask to LOG_GUEST_ERROR from 0
-i386/tdx: Adjust the supported CPUID based on TDX restrictions
-i386/tdx: Make Intel-PT unsupported for TD guest
-i386/tdx: Update tdx_cpuid_lookup[].tdx_fixed0/1 by tdx_caps.cpuid_config[]
-i386/tdx: Integrate tdx_caps->xfam_fixed0/1 into tdx_cpuid_lookup
-i386/tdx: Integrate tdx_caps->attrs_fixed0/1 to tdx_cpuid_lookup
-Revert "RAMBlock: make guest_memfd require uncoordinated discard"
-hw/vfio: extract the generic part of vfio populate and discard
-memory: introduce convert_mem_attr() callback in memory listener
-KVM: invoke the memory region listener when memory attribute converted
-hw/vfio: implement convert_mem_attr() callback in vfio_memory_listener
-hw/vfio: skip static IOMMU mapping if restricted memory region
+[*** HACK ***] Make the default log mask to LOG_GUEST_ERROR from 0
+Remove call to KVM_PRE_FAULT_MEMORY
+fixup: i386/tdx: Fix tdx_shared_bit()
+i386/cpuid: fix leaf 0xd
+i386/cpu: Add definition of CPUID bits
+i386/cpu: expose fdp-exception-only and fcs-fds-deprecation for -cpu host
+i386/cpu: Expose topology in 0x80000008.ECX only for AMD CPUs
+i386/cpu: Expose mwait.ecx only when CPUID_EXT_MONITOR is exposed
+i386/kvm: Don't construct CPUID 2 as stateful if it is not
+i386/cpu: Suppress CPUID values not defined by Intel
+i386/cpu: Add support for bits in CPUID.7_2.EDX
+i386/cpu: Drop AMD alias bits in FEAT_8000_0001_EDX for Intel guests
+i386/tdx: Force exposing CPUID 0x1f
+i386/tdx: Set cpuid_level to 0x23
+i386/tdx: Set migratable to false
+headers: Fetch update of TDX capabilities
+headers: Fetch update of struct kvm_tdx_init_vm
+i386/tdx: Fix TD attributes validation due to kvm_tdx_capabilities change
+i386/tdx: Explicitly setup XFAM for KVM_TDX_INIT_VM
+i386/tdx: filter CPUID configs with tdx_caps
+i386/tdx: Implement mask_cpuid_features() for TDX
+i386/cgs: introduce x86_confidential_guest_adjust_cpuid()
+i386/tdx: Implement ->adjust_cpuid()
+i386/tdx: hardcode cpuid leaf 0x2 as what TDX module expects
+i386/tdx: Fetch and validate CPUID of TD guest
+[WORKAROUND] i386/tdx: Don't treat (x2)apic_id difference as mismatch
+[HACK] i386/tdx: Mark MWAIT and TSC_DEADLINE_TIMER unsupported
+[HACK] i386/tdx: Don't treat it as mismatch on HYPERVISOR and HT bit
+sync kvm_tdx_init_vm with kernel headers
+guest_memfd: Introduce an object to manage the guest-memfd with RamDiscardManager
+guest_memfd: Introduce a helper to notify the shared/private state change
+KVM: Notify the state change via RamDiscardManager helper during shared/private conversion
+memory: Register the RamDiscardManager instance upon guest_memfd creation
+guest-memfd: Default to discarded (private) in guest_memfd_manager
+RAMBlock: make guest_memfd require coordinate discard
