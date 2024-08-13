@@ -21,13 +21,13 @@ use case.
   ```
   git am --empty=drop tdx-kvm/tdx_kvm_baseline_<sha>.mbox
   ```
-  The baseline (as noted in the filename above) for these patches is the
+  The baseline (**as noted in the filename above**) for these patches is the
 `kvm-coco-queue` branch in the [KVM
 repo](https://git.kernel.org/pub/scm/virt/kvm/kvm.git/). Since this is a
 rebasing branch, the commit is not guaranteed to be present in kvm.git. A
 snapshot of the older version of kvm-coco-queue can be found, for
 example,
-[here](https://git.kernel.org/pub/scm/linux/kernel/git/vishal/kvm.git/log/?h=kvm-coco-queue-20240512).
+[here](https://git.kernel.org/pub/scm/linux/kernel/git/vishal/kvm.git/log/?h=kvm-coco-queue-20240807).
 
 * `tdx-qemu` - Contains an mbox file with TDX patches for QEMU. This can be applied using:
   ```
@@ -42,16 +42,22 @@ example,
 * `tdx-kvm`:
   * Config options:
     ```
-    CONFIG_INTEL_TDX_HOST=y
-    CONFIG_KVM=y
-    CONFIG_KVM_INTEL=y
-    CONFIG_TDX_GUEST_DRIVER=y
-    CONFIG_HYPERV=y
+    Enables:
+    CONFIG_INTEL_TDX_HOST
+    CONFIG_KVM
+    CONFIG_KVM_INTEL
+    CONFIG_TDX_GUEST_DRIVER
+    CONFIG_HYPERV
+
+    Disables:
+    CONFIG_KEXEC
+    CONFIG_CRASH_DUMP
     ```
+    
   * Build and install the kernel on the host machine. Add module options:
     ```
     # echo "options kvm_intel tdx=on" > /etc/modprobe.d/tdx.conf
-    # grubby --update-kernel=ALL --args="console=ttyS0,115200 tdx_host=on nohibernate"
+    # grubby --update-kernel=ALL --args="console=ttyS0,115200 kvm_intel.tdx=on nohibernate"
     ```
 
 * `tdx-qemu`: 
@@ -88,7 +94,7 @@ example,
     cp Build/OvmfX64/DEBUG_GCC5/FV/OVMF.fd ./OVMF.fd
     ```
 
-* Additional notes on Host and Guest setup and booting can be found in the [wiki](https://github.com/intel/tdx-linux/wiki/Instruction-to-set-up-TDX-host-and-guest). One thing not mentioned on the wiki: make sure TDX guest has "clearcpuid=mtrr" in its kernel command line.
+* Additional notes on Host and Guest setup and booting can be found in the [wiki](https://github.com/intel/tdx-linux/wiki/Instruction-to-set-up-TDX-host-and-guest). One thing not mentioned on the wiki: make sure TDX guest has **"clearcpuid=mtrr"** in its kernel command line.
 
 
 ## Specific notes for device passthrough to TD
