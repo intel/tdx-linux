@@ -1,0 +1,8 @@
+- Changes (20240904)
+  - The RBP workaround patch has been removed, necessitating an update
+    of the TDX module to at least version UPLR2.
+
+  - Changes in the uAPI between Qemu/KVM necessitate that the edk2 is
+    updated to at least commit 9389b9a.
+
+  - The host kexec/kdump functionality has been enabled.
