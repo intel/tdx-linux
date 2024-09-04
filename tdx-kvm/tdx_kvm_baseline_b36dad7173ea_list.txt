@@ -26,51 +26,55 @@ KVM: VMX: Initialize TDX during KVM module load
 x86/virt/tdx: Share the global metadata structure for KVM to use
 KVM: TDX: Get TDX global information
 x86/virt/tdx: Read essential global metadata for KVM
-KVM: TDX: Add placeholders for TDX VM/vCPU structures
-[MARKER] The start of TDX KVM patch series: TDX architectural definitions
 x86/virt/tdx: Export SEAMCALL functions
-With fixup: KVM: TDX: Define TDX architectural definitions
+KVM: x86: Check hypercall's exit to userspace generically
+KVM: x86: Use user_exit_on_hypercall() instead of opencode
+[MARKER] The start of TDX KVM VM/vCPU Creation breakout series
+KVM: TDX: Add placeholders for TDX VM/vCPU structures
+KVM: TDX: Define TDX architectural definitions
 KVM: TDX: Add TDX "architectural" error codes
 KVM: TDX: Add C wrapper functions for SEAMCALLs to the TDX module
 KVM: TDX: Add helper functions to print TDX SEAMCALL error
-[MARKER] The start of TDX KVM patch series: TD VM creation/destruction
 x86/virt/tdx: Export TDX KeyID information
 KVM: TDX: Add helper functions to allocate/free TDX private host key id
 KVM: TDX: Add place holder for TDX VM specific mem_enc_op ioctl
 KVM: TDX: Get system-wide info about TDX module on initialization
 KVM: TDX: Initialize KVM supported capabilities when module setup
 KVM: TDX: Report kvm_tdx_caps in KVM_TDX_CAPABILITIES
-KVM: TDX: Allow userspace to configure maximum vCPUs for TDX guests
+KVM: TDX: Support per-VM KVM_CAP_MAX_VCPUS extension check
 KVM: TDX: create/destroy VM structure
 KVM: TDX: initialize VM with TDX specific parameters
 KVM: TDX: Make pmu_intel.c ignore guest TD case
 KVM: TDX: Don't offline the last cpu of one package when there's TDX guest
-[MARKER] The start of TDX KVM patch series: TD vcpu creation/destruction
 KVM: TDX: create/free TDX vcpu structure
 KVM: TDX: Do TDX specific vcpu initialization
 KVM: X86: Introduce kvm_get_supported_cpuid_internal()
-tdx_get_kvm_supported_cpuid()
-KVM_TDX_GET_CPUID
+KVM: X86: Introduce tdx_get_kvm_supported_cpuid()
+KVM: x86: Introduce KVM_TDX_GET_CPUID
 KVM: TDX: Use guest physical address to configure EPT level and GPAW
 KVM: x86/mmu: Taking guest pa into consideration when calculate tdp level
-filter by CPUID
-Add CPUID bits missing from KVM_GET_SUPPORTED_CPUID
-[MARKER] The start of TDX KVM patch series: TDX EPT violation
+KVM: x86: Filter directly configurable TDX CPUID bits
+KVM: x86: Add CPUID bits missing from KVM_GET_SUPPORTED_CPUID
+[MARKER] The start of TDX KVM MMU part 2 breakout series
 KVM: x86/mmu: Do not enable page track for TD guest
 KVM: VMX: Split out guts of EPT violation to common/exposed function
 KVM: VMX: Teach EPT violation helper about private mem
 KVM: TDX: Add accessors VMX VMCS helpers
 KVM: TDX: Add load_mmu_pgd method for TDX
+KVM: TDX: Set gfn_direct_bits to shared bit
 KVM: TDX: Retry seamcall when TDX_OPERAND_BUSY with operand SEPT
 KVM: TDX: Require TDP MMU and mmio caching for TDX
 KVM: x86/mmu: Add setter for shadow_mmio_value
-KVM: TDX: TDP MMU TDX support
+KVM: TDX: Set per-VM shadow_mmio_value to 0
+KVM: TDX: Handle TLB tracking for TDX
+KVM: TDX: Implement hooks to propagate changes of TDP MMU mirror page table
+KVM: TDX: Implement hook to get max mapping level of private pages
+KVM: TDX: Premap initial guest memory
 KVM: TDX: MTRR: implement get_mt_mask() for TDX
-[MARKER] The start of TDX KVM patch series: TD finalization
-KVM: TDX: Create initial guest memory
-[TO REBASE] KVM: x86/mmu: Export kvm_tdp_map_page()
+KVM: x86/mmu: Export kvm_tdp_map_page()
 KVM: TDX: Add an ioctl to create initial guest memory
 KVM: TDX: Finalize VM initialization
+KVM: TDX: Handle vCPU dissociation
 [MARKER] The start of TDX KVM patch series: TD vcpu enter/exit
 KVM: TDX: Implement TDX vcpu enter/exit path
 KVM: TDX: vcpu_run: save/restore host state(host kernel gs)
@@ -80,7 +84,6 @@ KVM: TDX: restore user ret MSRs
 KVM: TDX: Add TSX_CTRL msr into uret_msrs list
 [MARKER] The start of TDX KVM patch series: TD vcpu exits/interrupts/hypercalls
 KVM: TDX: Complete interrupts after TD exit
-KVM: TDX: Handle vCPU migration over logical processor
 KVM: x86: Add a switch_db_regs flag to handle TDX's auto-switched behavior
 KVM: TDX: Add support for find pending IRQ in a protected local APIC
 KVM: x86: Assume timer IRQ was injected if APIC state is proteced
@@ -91,13 +94,14 @@ KVM: TDX: Wait lapic expire when POSTED_INTR_ON set
 KVM: TDX: Implement methods to inject NMI
 KVM: VMX: Move NMI/exception handler to common helper
 KVM: TDX: Add a place holder to handle TDX VM exit
-KVM: TDX: Handle vmentry failure for INTEL TD guest
+KVM: TDX: Handle vmentry failure for TD guest
 KVM: TDX: Handle EXIT_REASON_OTHER_SMI
 KVM: TDX: Handle EPT violation/misconfig exit
 KVM: TDX: Handle EXCEPTION_NMI and EXTERNAL_INTERRUPT
 KVM: TDX: Add a place holder for handler of TDX hypercalls (TDG.VP.VMCALL)
 KVM: TDX: Handle KVM hypercall with TDG.VP.VMCALL
-KVM: TDX: Add KVM Exit for TDX TDG.VP.VMCALL
+KVM: TDX: Handle TDG.VP.VMCALL<MapGPA>
+KVM: TDX: Handle TDG.VP.VMCALL<ReportFatalError>
 KVM: TDX: Handle TDX PV CPUID hypercall
 KVM: TDX: Handle TDX PV HLT hypercall
 KVM: TDX: Handle TDX PV port I/O hypercall
@@ -106,7 +110,7 @@ KVM: x86: Move KVM_MAX_MCE_BANKS to header file
 KVM: TDX: Implement callbacks for MSR operations for TDX
 KVM: TDX: Handle TDX PV rdmsr/wrmsr hypercall
 KVM: TDX: Handle MSR MTRRCap and MTRRDefType access
-KVM: TDX: Handle MSR IA32_FEAT_CTL MSR and IA32_MCG_EXT_CTL
+KVM: TDX: Enable guest access to LMCE related MSRs
 KVM: TDX: Handle TDG.VP.VMCALL<GetTdVmCallInfo> hypercall
 KVM: TDX: Handle SMI request as !CONFIG_KVM_SMM
 KVM: TDX: Always block INIT/SIPI
@@ -115,14 +119,19 @@ KVM: TDX: Add methods to ignore guest instruction emulation
 KVM: TDX: Add methods to ignore VMX preemption timer
 KVM: TDX: Add methods to ignore accesses to TSC
 KVM: TDX: Ignore setting up mce
-KVM: TDX: Add a method to ignore for TDX to ignore hypercall patch
+KVM: TDX: Add a method to ignore hypercall patching
 KVM: TDX: Add methods to ignore virtual apic related operation
 KVM: TDX: Inhibit APICv for TDX guest
 KVM: TDX: Make TDX VM type supported
 Documentation/virt/kvm: Document on Trust Domain Extensions(TDX)
 [MARKER] the end of (the first phase of) TDX KVM patch series
-[SEAM-WORKAROUND] x86/virt/tdx: Explicitly save/restore RBP for seamcall_saved_ret()
-[SEAM-WORKAROUND] KVM: TDX: Don't use NO_RBP_MOD for backward compatibility
+x86/kexec: do unconditional WBINVD for bare-metal in stop_this_cpu()
+x86/kexec: do unconditional WBINVD for bare-metal in relocate_kernel()
+x86/virt/tdx: Make module initializatiton state immutable in reboot notifier
+x86/kexec: Reset TDX private memory on platforms with TDX erratum
+KVM: TDX: Reset TDX private pages during reboot
+x86/virt/tdx: Remove the !KEXEC_CORE dependency
+LAST_TDX_COMMIT
 KVM: selftests: Add function to allow one-to-one GVA to GPA mappings
 KVM: selftests: Expose function that sets up sregs based on VM's mode
 KVM: selftests: Store initial stack address in struct kvm_vcpu
@@ -159,6 +168,6 @@ KVM: selftests: TDX: Add cpuid filtering following QEMU way
 KVM: selftests: TDX: Fix verify_tdcall_vp_info()
 KVM: selftests: TDX: Fix verify_td_cpuid_tdcall()
 KVM: selftests: TDX: Update verify_td_cpuid() fma check
-KVM: selftests: TDX: TDX_TEST_CHECK_GUEST_FAILURE to print data[0]
 KVM: selftests: TDX: Export arch.s_bit to guest code
 KVM: selftests: TDX: Add shared bit to MMIO address
+KVM: selftests: TDX: Remove KVM_CAP_MAX_VCPUS emable cap call
