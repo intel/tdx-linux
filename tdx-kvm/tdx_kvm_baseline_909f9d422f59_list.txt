@@ -1,35 +1,26 @@
 FIRST_TDX_COMMIT
-KVM: x86/tdp_mmu: Add a helper function to walk down the TDP MMU
-KVM: x86/mmu: Implement memslot deletion for TDX
-x86/virt/tdx: Rename _offset to _member for TD_SYSINFO_MAP() macro
-x86/virt/tdx: Unbind global metadata read with 'struct tdx_tdmr_sysinfo'
-x86/virt/tdx: Support global metadata read for all element sizes
-x86/virt/tdx: Abstract reading multiple global metadata fields as a helper
-x86/virt/tdx: Move field mapping table of getting TDMR info to function local
+[MARKER] Metadata reading tweaks, bug fix and info dump v3
+x86/virt/tdx: Rename 'struct tdx_tdmr_sysinfo' to reflect the spec better
+x86/virt/tdx: Remove 'struct field_mapping' and implement TD_SYSINFO_MAP() macro
+x86/virt/tdx: Prepare to support reading other global metadata fields
 x86/virt/tdx: Refine a comment to reflect the latest TDX spec
 x86/virt/tdx: Start to track all global metadata in one structure
 x86/virt/tdx: Print TDX module basic information
 x86/virt/tdx: Reduce TDMR's reserved areas by using CMRs to find memory holes
 x86/virt/tdx: Don't initialize module that doesn't support NO_RBP_MOD feature
-KVM: Use dedicated mutex to protect kvm_usage_count to avoid deadlock
-KVM: Register cpuhp and syscore callbacks when enabling hardware
-KVM: Rename functions related to enabling virtualization hardware
-KVM: Add a module param to allow enabling virtualization when KVM is loaded
-KVM: Add arch hooks for enabling/disabling virtualization
-x86/reboot: Unconditionally define cpu_emergency_virt_cb typedef
-KVM: x86: Register "emergency disable" callbacks when virt is enabled
-KVM: Enable virtualization at load/initialization by default
+[MARKER] TDX Module init v0
 KVM: VMX: Refactor VMX module init/exit functions
 KVM: Export hardware virtualization enabling/disabling functions
 KVM: VMX: Initialize TDX during KVM module load
 [WORKAROUND]: KVM: TDX: Prevent WARN_ON() when unloading KVM
-x86/virt/tdx: Share the global metadata structure for KVM to use
-KVM: TDX: Get TDX global information
-x86/virt/tdx: Read essential global metadata for KVM
-x86/virt/tdx: Export SEAMCALL functions
+[MARKER] Check hypercall's exit to userspace generically v3
 KVM: x86: Check hypercall's exit to userspace generically
 KVM: x86: Use user_exit_on_hypercall() instead of opencode
 [MARKER] The start of TDX KVM VM/vCPU Creation breakout series
+x86/virt/tdx: Export SEAMCALL functions
+x86/virt/tdx: Share the global metadata structure for KVM to use
+KVM: TDX: Get TDX global information
+x86/virt/tdx: Read essential global metadata for KVM
 KVM: TDX: Add placeholders for TDX VM/vCPU structures
 KVM: TDX: Define TDX architectural definitions
 KVM: TDX: Add TDX "architectural" error codes
@@ -56,6 +47,8 @@ KVM: x86/mmu: Taking guest pa into consideration when calculate tdp level
 KVM: x86: Filter directly configurable TDX CPUID bits
 KVM: x86: Add CPUID bits missing from KVM_GET_SUPPORTED_CPUID
 [MARKER] The start of TDX KVM MMU part 2 breakout series
+KVM: x86/mmu: Implement memslot deletion for TDX
+KVM: x86/tdp_mmu: Add a helper function to walk down the TDP MMU
 KVM: x86/mmu: Do not enable page track for TD guest
 KVM: VMX: Split out guts of EPT violation to common/exposed function
 KVM: VMX: Teach EPT violation helper about private mem
@@ -94,7 +87,6 @@ KVM: TDX: Wait lapic expire when POSTED_INTR_ON set
 KVM: TDX: Implement methods to inject NMI
 KVM: VMX: Move NMI/exception handler to common helper
 KVM: TDX: Add a place holder to handle TDX VM exit
-KVM: TDX: Handle vmentry failure for TD guest
 KVM: TDX: Handle EXIT_REASON_OTHER_SMI
 KVM: TDX: Handle EPT violation/misconfig exit
 KVM: TDX: Handle EXCEPTION_NMI and EXTERNAL_INTERRUPT

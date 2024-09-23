@@ -1,3 +1,6 @@
+- Changes (20240923)
+  - Update the kvm/qemu patches to internal build360.
+
 - Changes (20240904)
   - The RBP workaround patch has been removed, necessitating an update
     of the TDX module to at least version UPLR2.
