@@ -14,7 +14,6 @@ i386/cpu: Set topology info in 0x80000008.ECX only for AMD CPUs
 i386/cpu: Suppress CPUID values not defined by Intel
 i386/cpu: Drop AMD alias bits in FEAT_8000_0001_EDX for non-AMD guests
 i386/cpu: Make invtsc migratable when user sets tsc-khz explicitly
-i386/kvm: Initialize has_xsave2 in kvm_arch_init()
 i386/cpu: Introduce enable_cpuid_0x1f to force exposing CPUID 0x1f
 *** HACK *** linux-headers: Update headers to pull in TDX API changes
 i386: Introduce tdx-guest object
@@ -23,16 +22,18 @@ i386/tdx: Implement tdx_kvm_init() to initialize TDX VM context
 i386/tdx: Get tdx_capabilities via KVM_TDX_CAPABILITIES
 i386/tdx: Introduce is_tdx_vm() helper and cache tdx_guest object
 kvm: Introduce kvm_arch_pre_create_vcpu()
+i386/kvm: Export cpuid_entry_get_reg() and cpuid_find_entry()
 i386/tdx: Initialize TDX before creating TD vcpus
 i386/tdx: Add property sept-ve-disable for tdx-guest object
 i386/tdx: Make sept_ve_disable set by default
 i386/tdx: Wire CPU features up with attributes of TD guest
+i386/tdx: Validate TD attributes
 i386/cpu: introduce x86_confidential_guest_cpu_instance_init()
 i386/tdx: implement tdx_cpu_instance_init()
 i386/cpu: introduce x86_confidenetial_guest_cpu_realizefn()
 i386/tdx: implement ->cpu_realizefn()
-i386/tdx: Validate TD attributes
 i386/tdx: Support user configurable mrconfigid/mrowner/mrownerconfig
+i386/tdx: Set core crystal clock for KVM lapic one shot timer
 i386/tdx: Implement user specified tsc frequency
 i386/tdx: Set kvm_readonly_mem_enabled to false for TDX VM
 i386/tdx: load TDVF for TD guest
@@ -59,31 +60,23 @@ i386/tdx: Only configure MSR_IA32_UCODE_REV in kvm_init_msrs() for TDs
 i386/tdx: Skip kvm_put_apicbase() for TDs
 i386/tdx: Don't get/put guest state for TDX VMs
 docs: Add TDX documentation
-fixup! kvm/tdx: Ignore memory conversion to shared of unassigned region
-i386/tdx: Set core crystal clock for KVM lapic one shot timer
 i386/tdx: Implement debug property
 i386/tdx: Force x2apic mode and routing for TDs
 q35/mch: add property txt-locked to mch for TXT-LOCKED register
 q35: introduce pam property to enable/disable PAM support
 [*** HACK ***] Make the default log mask to LOG_GUEST_ERROR from 0
-Remove call to KVM_PRE_FAULT_MEMORY
 i386/tdx: Force exposing CPUID 0x1f
-i386/tdx: Set cpuid_level to 0x23
-headers: Fetch update of TDX capabilities
-headers: Fetch update of struct kvm_tdx_init_vm
-i386/tdx: Fix TD attributes validation due to kvm_tdx_capabilities change
-i386/tdx: Explicitly setup XFAM for KVM_TDX_INIT_VM
-i386/tdx: filter CPUID configs with tdx_caps
-i386/tdx: Implement mask_cpuid_features() for TDX
-i386/cgs: introduce x86_confidential_guest_adjust_cpuid()
-i386/tdx: Implement ->adjust_cpuid()
-i386/tdx: hardcode cpuid leaf 0x2 as what TDX module expects
-i386/tdx: Make invtsc default on
+i386/cgs: Rename *mask_cpuid_features() to *adjust_cpuid_features()
+i386/tdx: Implement adjust_cpuid_features() for TDX
+i386/cgs: introduce x86_confidenetial_guest_mask_feature_word()
+i386/tdx: implement tdx_mask_feature_word()
+i386/cpu: Move CPUID_XSTATE_XSS_MASK to header file and introduce CPUID_XSTATE_MASK
+i386/tdx: Mask off the Feature bit by unsupported XFAM
 i386/cpu: Expose mark_unavailable_features() for TDX
-i386/kvm: Export cpuid_entry_get_reg() and cpuid_find_entry()
 i386/cpu: introduce mark_forced_on_features()
 i386/cgs: Introduce x86_confidential_guest_check_features()
 i386/tdx: Fetch and validate CPUID of TD guest
 i386/tdx: Don't treat SYSCALL as unavailable
-[HACK] i386/tdx: Mark MWAIT and TSC_DEADLINE_TIMER unsupported
-[HACK] i386/tdx: Fix the unavailable report of HYPERVISOR bit
+cpu: Introduce qemu_early_init_vcpu()
+i386/cpu: Set up CPUID_HT in x86_cpu_realizefn() instead of cpu_x86_cpuid()
+i386/tdx: Make invtsc default on
