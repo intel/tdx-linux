@@ -1,26 +1,27 @@
 FIRST_TDX_COMMIT
-[MARKER] Metadata reading tweaks, bug fix and info dump v3
+[MARKER] v6 "TDX host: metadata reading tweaks, bug fix and info dump"
 x86/virt/tdx: Rename 'struct tdx_tdmr_sysinfo' to reflect the spec better
-x86/virt/tdx: Remove 'struct field_mapping' and implement TD_SYSINFO_MAP() macro
-x86/virt/tdx: Prepare to support reading other global metadata fields
-x86/virt/tdx: Refine a comment to reflect the latest TDX spec
 x86/virt/tdx: Start to track all global metadata in one structure
-x86/virt/tdx: Print TDX module basic information
+x86/virt/tdx: Use auto-generated code to read global metadata
+x86/virt/tdx: Use dedicated struct members for PAMT entry sizes
+x86/virt/tdx: Add missing header file inclusion to local tdx.h
+x86/virt/tdx: Switch to use auto-generated global metadata reading code
+x86/virt/tdx: Trim away tail null CMRs
 x86/virt/tdx: Reduce TDMR's reserved areas by using CMRs to find memory holes
-x86/virt/tdx: Don't initialize module that doesn't support NO_RBP_MOD feature
-[MARKER] TDX Module init v0
+x86/virt/tdx: Require the module to assert it has the NO_RBP_MOD mitigation
+x86/virt/tdx: Print TDX module version
+[MARKER] "KVM: VMX: Initialize TDX when loading KVM module" from kvm-coco-queue
 KVM: VMX: Refactor VMX module init/exit functions
 KVM: Export hardware virtualization enabling/disabling functions
 KVM: VMX: Initialize TDX during KVM module load
-[WORKAROUND]: KVM: TDX: Prevent WARN_ON() when unloading KVM
 [MARKER] The start of TDX KVM VM/vCPU Creation breakout series
 x86/virt/tdx: Share the global metadata structure for KVM to use
 KVM: TDX: Get TDX global information
 x86/virt/tdx: Read essential global metadata for KVM
-x86/virt/tdx: Add functions to alloc and free TDX guest KeyID
+x86/virt/tdx: Add tdx_guest_keyid_alloc/free() to alloc and free TDX guest KeyID
 x86/virt/tdx: Add SEAMCALL wrappers for TDX KeyID management
-x86/virt/tdx: Add SEAMCALL wrappers for TDX TD Creation
-x86/virt/tdx: Add SEAMCALL wrappers for TDX vCPU Creation
+x86/virt/tdx: Add SEAMCALL wrappers for TDX TD creation
+x86/virt/tdx: Add SEAMCALL wrappers for TDX vCPU creation
 x86/virt/tdx: Add SEAMCALL wrappers for TDX page cache management
 x86/virt/tdx: Add SEAMCALL wrappers for TDX VM/vCPU field access
 x86/virt/tdx: Add SEAMCALL wrappers for TDX flush operations
@@ -57,8 +58,6 @@ KVM: TDX: Set per-VM shadow_mmio_value to 0
 KVM: TDX: Handle TLB tracking for TDX
 KVM: TDX: Implement hooks to propagate changes of TDP MMU mirror page table
 KVM: TDX: Implement hook to get max mapping level of private pages
-KVM: TDX: MTRR: implement get_mt_mask() for TDX
-Revert "KVM: TDX: MTRR: implement get_mt_mask() for TDX"
 KVM: x86/mmu: Export kvm_tdp_map_page()
 KVM: TDX: Add an ioctl to create initial guest memory
 KVM: TDX: Finalize VM initialization
@@ -71,10 +70,18 @@ KVM: TDX: restore host xsave state when exit from the guest TD
 KVM: x86: Allow to update cached values in kvm_user_return_msrs w/o wrmsr
 KVM: TDX: restore user ret MSRs
 KVM: TDX: Add TSX_CTRL msr into uret_msrs list
-[MARKER] Check hypercall's exit to userspace generically v3
-KVM: x86: Check hypercall's exit to userspace generically
+[MARKER] Check hypercall's exit to userspace generically v4
+KVM: x86: Refactor __kvm_emulate_hypercall() to accept reg names, not values
 KVM: x86: Use user_exit_on_hypercall() instead of opencode
-[MARKER] The start of TDX KVM patch series: TD vcpu exits/interrupts/hypercalls
+[MARKER] The start of TDX KVM patch series: TDX hypercalls may exit to userspace
+KVM: TDX: Add a place holder to handle TDX VM exit
+KVM: TDX: Add a place holder for handler of TDX hypercalls (TDG.VP.VMCALL)
+KVM: TDX: Handle KVM hypercall with TDG.VP.VMCALL
+KVM: TDX: Handle TDG.VP.VMCALL<MapGPA>
+KVM: TDX: Handle TDG.VP.VMCALL<ReportFatalError>
+KVM: TDX: Handle TDX PV port I/O hypercall
+KVM: TDX: Handle TDX PV MMIO hypercall
+[MARKER] The start of TDX KVM patch series: TDX interrupts
 KVM: TDX: Add support for find pending IRQ in a protected local APIC
 KVM: VMX: Remove use of struct vcpu_vmx from posted_intr.c
 KVM: TDX: Disable PI wakeup for IPIv
@@ -89,21 +96,14 @@ KVM: TDX: Always block INIT/SIPI
 KVM: TDX: Inhibit APICv for TDX guest
 KVM: TDX: Add methods to ignore virtual apic related operation
 KVM: VMX: Move NMI/exception handler to common helper
-KVM: TDX: Add a place holder to handle TDX VM exit
-KVM: TDX: Handle EXIT_REASON_OTHER_SMI
 KVM: TDX: Handle EXCEPTION_NMI and EXTERNAL_INTERRUPT
-[MARKER] The start of TDX KVM patch series: TD vcpu exits/interrupts/hypercalls part2
+KVM: TDX: Handle EXIT_REASON_OTHER_SMI
+[MARKER] The start of TDX KVM patch series: The rest part
 KVM: x86: Add a switch_db_regs flag to handle TDX's auto-switched behavior
 KVM: TDX: Handle EPT violation/misconfig exit
 KVM: TDX: Detect unexpected SEPT violations due to pending SPTEs
-KVM: TDX: Add a place holder for handler of TDX hypercalls (TDG.VP.VMCALL)
-KVM: TDX: Handle KVM hypercall with TDG.VP.VMCALL
-KVM: TDX: Handle TDG.VP.VMCALL<MapGPA>
-KVM: TDX: Handle TDG.VP.VMCALL<ReportFatalError>
 KVM: TDX: Handle TDX PV CPUID hypercall
 KVM: TDX: Handle TDX PV HLT hypercall
-KVM: TDX: Handle TDX PV port I/O hypercall
-KVM: TDX: Handle TDX PV MMIO hypercall
 KVM: x86: Move KVM_MAX_MCE_BANKS to header file
 KVM: TDX: Implement callbacks for MSR operations
 KVM: TDX: Handle TDX PV rdmsr/wrmsr hypercall

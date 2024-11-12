@@ -27,7 +27,7 @@ repo](https://git.kernel.org/pub/scm/virt/kvm/kvm.git/). Since this is a
 rebasing branch, the commit is not guaranteed to be present in kvm.git. A
 snapshot of the older version of kvm-coco-queue can be found, for
 example,
-[here](https://github.com/intel/tdx/releases/tag/kvm-coco-queue-snapshot%2Fkvm-coco-queue-snapshot-build360).
+[here](https://github.com/intel/tdx/releases/tag/kvm-coco-queue-snapshot%2Fkvm-coco-queue-snapshot-20241109).
 
 * `tdx-qemu` - Contains an mbox file with TDX patches for QEMU. This can be applied using:
   ```

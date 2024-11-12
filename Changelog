@@ -1,3 +1,6 @@
+- Changes (20241112)
+  - Update the kvm/qemu/edk2 patches to internal build 442.
+
 - Changes (20241029)
   - Update the kvm/qemu/edk2 patches to internal build 414.
 
