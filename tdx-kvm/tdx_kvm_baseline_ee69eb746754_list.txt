@@ -1,5 +1,5 @@
 FIRST_TDX_COMMIT
-[MARKER] v6 "TDX host: metadata reading tweaks, bug fix and info dump"
+[MARKER] v7 "TDX host: metadata reading tweaks, bug fix and info dump"
 x86/virt/tdx: Rename 'struct tdx_tdmr_sysinfo' to reflect the spec better
 x86/virt/tdx: Start to track all global metadata in one structure
 x86/virt/tdx: Use auto-generated code to read global metadata
@@ -49,9 +49,11 @@ KVM: VMX: Teach EPT violation helper about private mem
 KVM: TDX: Add accessors VMX VMCS helpers
 KVM: TDX: Add load_mmu_pgd method for TDX
 KVM: TDX: Set gfn_direct_bits to shared bit
-x86/virt/tdx: Add Secure EPT related SEAMCALL wrappers
-x86/virt/tdx: Add SEAMCALL wrappers for TDX TD measurement
-KVM: TDX: Retry seamcall when TDX_OPERAND_BUSY with operand SEPT
+x86/virt/tdx: Add SEAMCALL wrapper tdh_mem_sept_add() to add SEPT pages
+x86/virt/tdx: Add SEAMCALL wrappers to add TD private pages
+x86/virt/tdx: Add SEAMCALL wrappers to manage TDX TLB tracking
+x86/virt/tdx: Add SEAMCALL wrappers to remove a TD private page
+x86/virt/tdx: Add SEAMCALL wrappers for TD measurement of initial contents
 KVM: TDX: Require TDP MMU and mmio caching for TDX
 KVM: x86/mmu: Add setter for shadow_mmio_value
 KVM: TDX: Set per-VM shadow_mmio_value to 0
@@ -62,6 +64,7 @@ KVM: x86/mmu: Export kvm_tdp_map_page()
 KVM: TDX: Add an ioctl to create initial guest memory
 KVM: TDX: Finalize VM initialization
 KVM: TDX: Handle vCPU dissociation
+[HACK] KVM: TDX: Retry seamcall when TDX_OPERAND_BUSY with operand SEPT
 [MARKER] The start of TDX KVM patch series: TD vcpu enter/exit
 x86/virt/tdx: Add SEAMCALL wrapper to enter/exit TDX guest
 KVM: TDX: Implement TDX vcpu enter/exit path
@@ -70,9 +73,13 @@ KVM: TDX: restore host xsave state when exit from the guest TD
 KVM: x86: Allow to update cached values in kvm_user_return_msrs w/o wrmsr
 KVM: TDX: restore user ret MSRs
 KVM: TDX: Add TSX_CTRL msr into uret_msrs list
-[MARKER] Check hypercall's exit to userspace generically v4
-KVM: x86: Refactor __kvm_emulate_hypercall() to accept reg names, not values
-KVM: x86: Use user_exit_on_hypercall() instead of opencode
+[MARKER] Prep KVM hypercall handling for TDX
+KVM: x86: Play nice with protected guests in complete_hypercall_exit()
+KVM: x86: Add a helper to check for user interception of KVM hypercalls
+KVM: x86: Move "emulate hypercall" function declarations to x86.h
+KVM: x86: Bump hypercall stat prior to fully completing hypercall
+KVM: x86: Always complete hypercall via function callback
+KVM: x86: Refactor __kvm_emulate_hypercall() into a macro
 [MARKER] The start of TDX KVM patch series: TDX hypercalls may exit to userspace
 KVM: TDX: Add a place holder to handle TDX VM exit
 KVM: TDX: Add a place holder for handler of TDX hypercalls (TDG.VP.VMCALL)
