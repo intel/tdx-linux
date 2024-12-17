@@ -65,3 +65,5 @@ i386/tdx: Make invtsc default on
 cpu: Introduce qemu_early_init_vcpu()
 i386/cpu: Set up CPUID_HT in x86_cpu_realizefn() instead of cpu_x86_cpuid()
 docs: Add TDX documentation
+roms/edk2: Update the EDK2 submodule to include new location for 'subhook'
+i386/kvm: Set return value after handling KVM_EXIT_HYPERCALL

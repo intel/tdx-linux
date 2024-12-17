@@ -1,0 +1,40 @@
+FIRST_TDX_COMMIT
+[MARKER] The start of TDX KVM patch series: TD vcpu enter/exit
+x86/virt/tdx: Add SEAMCALL wrapper to enter/exit TDX guest
+KVM: TDX: Implement TDX vcpu enter/exit path
+KVM: TDX: vcpu_run: save/restore host state(host kernel gs)
+KVM: TDX: restore host xsave state when exit from the guest TD
+KVM: x86: Allow to update cached values in kvm_user_return_msrs w/o wrmsr
+KVM: TDX: restore user ret MSRs
+KVM: TDX: Disable support for TSX and WAITPKG
+KVM: TDX: Save and restore IA32_DEBUGCTL
+KVM: x86: Add a switch_db_regs flag to handle TDX's auto-switched behavior
+KVM: TDX: Add a place holder to handle TDX VM exit
+KVM: TDX: Add a place holder for handler of TDX hypercalls (TDG.VP.VMCALL)
+KVM: TDX: Handle KVM hypercall with TDG.VP.VMCALL
+KVM: TDX: Handle TDG.VP.VMCALL<MapGPA>
+KVM: TDX: Handle TDG.VP.VMCALL<ReportFatalError>
+KVM: TDX: Handle TDX PV port I/O hypercall
+KVM: TDX: Handle TDX PV MMIO hypercall
+KVM: TDX: Add support for find pending IRQ in a protected local APIC
+KVM: VMX: Remove use of struct vcpu_vmx from posted_intr.c
+KVM: TDX: Disable PI wakeup for IPIv
+KVM: VMX: Move posted interrupt delivery code to common header
+KVM: TDX: Implement non-NMI interrupt injection
+KVM: x86: Assume timer IRQ was injected if APIC state is protected
+KVM: TDX: Wait lapic expire when timer IRQ was injected
+KVM: TDX: Implement methods to inject NMI
+KVM: TDX: Complete interrupts after TD exit
+KVM: TDX: Handle SMI request as !CONFIG_KVM_SMM
+KVM: TDX: Always block INIT/SIPI
+KVM: TDX: Inhibit APICv for TDX guest
+KVM: TDX: Add methods to ignore virtual apic related operation
+KVM: VMX: Move NMI/exception handler to common helper
+KVM: TDX: Handle EXCEPTION_NMI and EXTERNAL_INTERRUPT
+KVM: TDX: Handle EXIT_REASON_OTHER_SMI
+KVM: TDX: Handle EPT violation/misconfig exit
+KVM: TDX: Detect unexpected SEPT violations due to pending SPTEs
+KVM: TDX: Handle TDX PV CPUID hypercall
+KVM: TDX: Handle TDX PV HLT hypercall
+KVM: x86: Move KVM_MAX_MCE_BANKS to header file
+KVM: TDX: Implement callbacks for MSR operations

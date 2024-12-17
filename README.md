@@ -21,13 +21,14 @@ use case.
   ```
   git am --empty=drop tdx-kvm/tdx_kvm_baseline_<sha>.mbox
   ```
-  The baseline (**as noted in the filename above**) for these patches is the
+  The baseline (**as noted in the filename above indicated by sha**) for these patches is the
 `kvm-coco-queue` branch in the [KVM
 repo](https://git.kernel.org/pub/scm/virt/kvm/kvm.git/). Since this is a
 rebasing branch, the commit is not guaranteed to be present in kvm.git. A
 snapshot of the older version of kvm-coco-queue can be found, for
 example,
-[here](https://github.com/intel/tdx/releases/tag/kvm-coco-queue-snapshot%2Fkvm-coco-queue-snapshot-20241109).
+[here](https://github.com/intel/tdx/releases/tag/kvm-coco-queue-snapshot%2Fkvm-coco-queue-snapshot-20241211).
+
 
 * `tdx-qemu` - Contains an mbox file with TDX patches for QEMU. This can be applied using:
   ```
