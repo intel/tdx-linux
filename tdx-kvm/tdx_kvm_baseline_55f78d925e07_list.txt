@@ -1,8 +1,9 @@
 FIRST_TDX_COMMIT
-fixup! KVM: x86: Refactor __kvm_emulate_hypercall() into a macro
 [MARKER] The start of TDX KVM patch series: TD vcpu enter/exit
+x86/virt/tdx: Make tdh_vp_enter() noinstr
+KVM: x86: Allow the use of kvm_load_host_xsave_state() with guest_state_protected
+KVM: TDX: Set arch.has_protected_state to true
 KVM: VMX: Move common fields of struct vcpu_{vmx,tdx} to a struct
-x86/virt/tdx: Add SEAMCALL wrapper to enter/exit TDX guest
 KVM: TDX: Implement TDX vcpu enter/exit path
 KVM: TDX: vcpu_run: save/restore host state(host kernel gs)
 KVM: TDX: restore host xsave state when exit from the guest TD
@@ -12,6 +13,7 @@ KVM: TDX: Disable support for TSX and WAITPKG
 KVM: TDX: Save and restore IA32_DEBUGCTL
 KVM: x86: Add a switch_db_regs flag to handle TDX's auto-switched behavior
 [MARKER] The start of TDX KVM patch series: Hypercalls exit to userspace
+KVM: x86: Have ____kvm_emulate_hypercall() read the GPRs
 KVM: TDX: Add a place holder to handle TDX VM exit
 KVM: TDX: Add a place holder for handler of TDX hypercalls (TDG.VP.VMCALL)
 KVM: TDX: Handle KVM hypercall with TDG.VP.VMCALL
@@ -30,7 +32,8 @@ KVM: TDX: Implement methods to inject NMI
 KVM: TDX: Complete interrupts after TD exit
 KVM: TDX: Handle SMI request as !CONFIG_KVM_SMM
 KVM: TDX: Always block INIT/SIPI
-KVM: TDX: Inhibit APICv for TDX guest
+KVM: TDX: Enforce KVM_IRQCHIP_SPLIT for TDX guests
+KVM: TDX: Force APICv active for TDX guest
 KVM: TDX: Add methods to ignore virtual apic related operation
 KVM: VMX: Move emulation_required to struct vcpu_vt
 KVM: VMX: Add a helper for NMI handling
@@ -39,6 +42,8 @@ KVM: TDX: Handle EXIT_REASON_OTHER_SMI
 [MARKER] The start of TDX KVM patch series: TDX "the rest"
 KVM: TDX: Handle EPT violation/misconfig exit
 KVM: TDX: Detect unexpected SEPT violations due to pending SPTEs
+KVM: TDX: Retry locally in TDX EPT violation handler on RET_PF_RETRY
+KVM: TDX: Kick off vCPUs when SEAMCALL is busy during TD page removal
 KVM: TDX: Handle TDX PV CPUID hypercall
 KVM: TDX: Handle TDX PV HLT hypercall
 KVM: x86: Move KVM_MAX_MCE_BANKS to header file
@@ -53,63 +58,41 @@ KVM: TDX: Add methods to ignore accesses to TSC
 KVM: TDX: Ignore setting up mce
 KVM: TDX: Add a method to ignore hypercall patching
 KVM: TDX: Make TDX VM type supported
+KVM: TDX: Add a method to ignore updating CPU dirty logging request for TDs
+KVM: Add parameter "kvm" to kvm_cpu_dirty_log_size() and its callers
+KVM: x86/mmu: Add parameter "kvm" to kvm_mmu_page_ad_need_write_protect()
+KVM: x86: Make cpu_dirty_log_size a per-VM value
 Documentation/virt/kvm: Document on Trust Domain Extensions(TDX)
 LAST_TDX_COMMIT
+KVM: selftests: Add printf attribute to _no_printf()
 KVM: selftests: Add function to allow one-to-one GVA to GPA mappings
-amend! KVM: selftests: Add function to allow one-to-one GVA to GPA mappings
 KVM: selftests: Expose function that sets up sregs based on VM's mode
-amend! KVM: selftests: Expose function that sets up sregs based on VM's mode
 KVM: selftests: Store initial stack address in struct kvm_vcpu
-amend! KVM: selftests: Store initial stack address in struct kvm_vcpu
 KVM: selftests: Refactor steps in vCPU descriptor table initialization
-amend! KVM: selftests: Refactor steps in vCPU descriptor table initialization
+KVM: selftests: Update kvm_init_vm_address_properties() for TDX
 KVM: selftests: Add helper functions to create TDX VMs
-amend! KVM: selftests: Add helper functions to create TDX VMs
 KVM: selftests: TDX: Use KVM_TDX_CAPABILITIES to validate TDs' attribute configuration
 KVM: selftests: TDX: Update load_td_memory_region for VM memory backed by guest memfd
 KVM: selftests: TDX: Add TDX lifecycle test
-amend! KVM: selftests: TDX: Add TDX lifecycle test
 KVM: selftests: TDX: Add report_fatal_error test
-amend! KVM: selftests: TDX: Add report_fatal_error test
 KVM: selftests: TDX: Adding test case for TDX port IO
-amend! KVM: selftests: TDX: Adding test case for TDX port IO
 KVM: selftests: TDX: Add basic TDX CPUID test
-amend! KVM: selftests: TDX: Add basic TDX CPUID test
 KVM: selftests: TDX: Add basic get_td_vmcall_info test
-amend! KVM: selftests: TDX: Add basic get_td_vmcall_info test
 KVM: selftests: TDX: Add TDX IO writes test
-amend! KVM: selftests: TDX: Add TDX IO writes test
 KVM: selftests: TDX: Add TDX IO reads test
-amend! KVM: selftests: TDX: Add TDX IO reads test
 KVM: selftests: TDX: Add TDX MSR read/write tests
-amend! KVM: selftests: TDX: Add TDX MSR read/write tests
 KVM: selftests: TDX: Add TDX HLT exit test
-amend! KVM: selftests: TDX: Add TDX HLT exit test
 KVM: selftests: TDX: Add TDX MMIO reads test
-amend! KVM: selftests: TDX: Add TDX MMIO reads test
 KVM: selftests: TDX: Add TDX MMIO writes test
-amend! KVM: selftests: TDX: Add TDX MMIO writes test
 KVM: selftests: TDX: Add TDX CPUID TDVMCALL test
-amend! KVM: selftests: TDX: Add TDX CPUID TDVMCALL test
 KVM: selftests: TDX: Verify the behavior when host consumes a TD private memory
-amend! KVM: selftests: TDX: Verify the behavior when host consumes a TD private memory
 KVM: selftests: TDX: Add TDG.VP.INFO test
-amend! KVM: selftests: TDX: Add TDG.VP.INFO test
 KVM: selftests: Add functions to allow mapping as shared
-amend! KVM: selftests: Add functions to allow mapping as shared
 KVM: selftests: TDX: Add shared memory test
-amend! KVM: selftests: TDX: Add shared memory test
-KVM: selftests: Expose _vm_vaddr_alloc
-amend! KVM: selftests: Expose _vm_vaddr_alloc
+KVM: selftests: Expose ____vm_vaddr_alloc()
 KVM: selftests: TDX: Add support for TDG.MEM.PAGE.ACCEPT
-amend! KVM: selftests: TDX: Add support for TDG.MEM.PAGE.ACCEPT
 KVM: selftests: TDX: Add support for TDG.VP.VEINFO.GET
-amend! KVM: selftests: TDX: Add support for TDG.VP.VEINFO.GET
 KVM: selftests: Propagate KVM_EXIT_MEMORY_FAULT to userspace
 KVM: selftests: TDX: Add TDX UPM selftest
-amend! KVM: selftests: TDX: Add TDX UPM selftest
 KVM: selftests: TDX: Add TDX UPM selftests for implicit conversion
-amend! KVM: selftests: TDX: Add TDX UPM selftests for implicit conversion
-fixup! KVM: selftests: TDX: Add report_fatal_error test
-fixup! KVM: selftests: TDX: Add TDX MSR read/write tests
-set log level
+KVM: selftests: TDX: Test LOG_DIRTY_PAGES flag to a non-GUEST_MEMFD memslot

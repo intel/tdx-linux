@@ -1,10 +1,4 @@
 FIRST_TDX_COMMIT
-guest_memfd: Introduce an object to manage the guest-memfd with RamDiscardManager
-guest_memfd: Introduce a helper to notify the shared/private state change
-KVM: Notify the state change via RamDiscardManager helper during shared/private conversion
-memory: Register the RamDiscardManager instance upon guest_memfd creation
-memory: Default to discarded (private) in guest_memfd_manager
-RAMBlock: make guest_memfd require coordinate discard
 *** HACK *** linux-headers: Update headers to pull in TDX API changes
 i386: Introduce tdx-guest object
 i386/tdx: Implement tdx_kvm_type() for TDX
@@ -12,13 +6,11 @@ i386/tdx: Implement tdx_kvm_init() to initialize TDX VM context
 i386/tdx: Get tdx_capabilities via KVM_TDX_CAPABILITIES
 i386/tdx: Introduce is_tdx_vm() helper and cache tdx_guest object
 kvm: Introduce kvm_arch_pre_create_vcpu()
-i386/kvm: Export cpuid_entry_get_reg() and cpuid_find_entry()
 i386/tdx: Initialize TDX before creating TD vcpus
 i386/tdx: Add property sept-ve-disable for tdx-guest object
 i386/tdx: Make sept_ve_disable set by default
 i386/tdx: Wire CPU features up with attributes of TD guest
 i386/tdx: Validate TD attributes
-i386/tdx: Support user configurable mrconfigid/mrowner/mrownerconfig
 i386/tdx: Set APIC bus rate to match with what TDX module enforces
 i386/tdx: Implement user specified tsc frequency
 i386/tdx: load TDVF for TD guest
@@ -37,33 +29,31 @@ i386/tdx: Handle KVM_SYSTEM_EVENT_TDX_FATAL
 i386/tdx: Wire TDX_REPORT_FATAL_ERROR with GuestPanic facility
 i386/cpu: introduce x86_confidential_guest_cpu_instance_init()
 i386/tdx: implement tdx_cpu_instance_init()
-i386/cpu: introduce x86_confidenetial_guest_cpu_realizefn()
-i386/tdx: implement tdx_cpu_realizefn()
 i386/cpu: Introduce enable_cpuid_0x1f to force exposing CPUID 0x1f
 i386/tdx: Force exposing CPUID 0x1f
 i386/tdx: Set kvm_readonly_mem_enabled to false for TDX VM
 i386/tdx: Disable SMM for TDX VMs
 i386/tdx: Disable PIC for TDX VMs
-hw/i386: add eoi_intercept_unsupported member to X86MachineState
-hw/i386: add option to forcibly report edge trigger in acpi tables
 i386/tdx: Don't synchronize guest tsc for TDs
 i386/tdx: Only configure MSR_IA32_UCODE_REV in kvm_init_msrs() for TDs
-i386/tdx: Skip kvm_put_apicbase() for TDs
-i386/tdx: Don't get/put guest state for TDX VMs
+i386/apic: Skip kvm_apic_put() for TDX
+cpu: Don't set vcpu_dirty when guest_state_protected
 i386/cgs: Rename *mask_cpuid_features() to *adjust_cpuid_features()
 i386/tdx: Implement adjust_cpuid_features() for TDX
 i386/tdx: Apply TDX fixed0 and fixed1 information to supported CPUIDs
 i386/tdx: Mask off CPUID bits by unsupported TD Attributes
 i386/cpu: Move CPUID_XSTATE_XSS_MASK to header file and introduce CPUID_XSTATE_MASK
 i386/tdx: Mask off CPUID bits by unsupported XFAM
-i386/cpu: Expose mark_unavailable_features() for TDX
-i386/cpu: introduce mark_forced_on_features()
+i386/tdx: Mark the configurable bit not reported by KVM as unsupported
 i386/cgs: Introduce x86_confidential_guest_check_features()
 i386/tdx: Fetch and validate CPUID of TD guest
 i386/tdx: Don't treat SYSCALL as unavailable
 i386/tdx: Make invtsc default on
-cpu: Introduce qemu_early_init_vcpu()
-i386/cpu: Set up CPUID_HT in x86_cpu_realizefn() instead of cpu_x86_cpuid()
+i386/tdx: Validate phys_bits against host value
 docs: Add TDX documentation
-roms/edk2: Update the EDK2 submodule to include new location for 'subhook'
-i386/kvm: Set return value after handling KVM_EXIT_HYPERCALL
+memory: Export a helper to get intersection of a MemoryRegionSection with a given range
+guest_memfd: Introduce an object to manage the guest-memfd with RamDiscardManager
+guest_memfd: Introduce a callback to notify the shared/private state change
+KVM: Notify the state change event during shared/private conversion
+memory: Register the RamDiscardManager instance upon guest_memfd creation
+RAMBlock: make guest_memfd require coordinate discard
