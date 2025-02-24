@@ -1,7 +1,7 @@
 From ea594ac9a1026fc7e13cc1b7893c10a13df5f787 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Sun, 25 Aug 2024 23:21:40 -0400
-Subject: [PATCH 01/59] FIRST_TDX_COMMIT
+Subject: [PATCH 01/60] FIRST_TDX_COMMIT
 
 -- 
 2.43.5
@@ -10,7 +10,7 @@ Subject: [PATCH 01/59] FIRST_TDX_COMMIT
 From 38f744a690b768baaf9463a77a5ac8fc7e9fd316 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 30 Dec 2022 10:16:29 +0800
-Subject: [PATCH 02/59] *** HACK *** linux-headers: Update headers to pull in
+Subject: [PATCH 02/60] *** HACK *** linux-headers: Update headers to pull in
  TDX API changes
 
 Pull in recent TDX updates, which are not backwards compatible.
@@ -126,7 +126,7 @@ index 3bcd4eabe3..b325122505 100644
 From 3225a51f54fcbd31cb37989b5b6563d1de23266d Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 9 Dec 2021 16:55:40 +0800
-Subject: [PATCH 03/59] i386: Introduce tdx-guest object
+Subject: [PATCH 03/60] i386: Introduce tdx-guest object
 
 Introduce tdx-guest object which inherits X86_CONFIDENTIAL_GUEST,
 and will be used to create TDX VMs (TDs) by
@@ -339,7 +339,7 @@ index 0000000000..f3b7253361
 From 63177fc3e47552c69252e69d280a523f6bac9048 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 7 Dec 2021 17:04:53 +0800
-Subject: [PATCH 04/59] i386/tdx: Implement tdx_kvm_type() for TDX
+Subject: [PATCH 04/60] i386/tdx: Implement tdx_kvm_type() for TDX
 
 TDX VM requires VM type to be KVM_X86_TDX_VM. Implement tdx_kvm_type()
 as X86ConfidentialGuestClass->kvm_type.
@@ -402,7 +402,7 @@ index ec84ae2947..d785c1f6d1 100644
 From 0c6725bcdd85c6eb40d9e0f3e1c062aa8b64d3cc Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 3 Apr 2020 11:21:22 +0800
-Subject: [PATCH 05/59] i386/tdx: Implement tdx_kvm_init() to initialize TDX VM
+Subject: [PATCH 05/60] i386/tdx: Implement tdx_kvm_init() to initialize TDX VM
  context
 
 Implement TDX specific ConfidentialGuestSupportClass::kvm_init()
@@ -482,7 +482,7 @@ index d785c1f6d1..4ff9486081 100644
 From 6e6e546fb66c2fbb18ad967ad2933b056ef677b9 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 8 Dec 2021 13:46:25 +0800
-Subject: [PATCH 06/59] i386/tdx: Get tdx_capabilities via KVM_TDX_CAPABILITIES
+Subject: [PATCH 06/60] i386/tdx: Get tdx_capabilities via KVM_TDX_CAPABILITIES
 
 KVM provides TDX capabilities via sub command KVM_TDX_CAPABILITIES of
 IOCTL(KVM_MEMORY_ENCRYPT_OP). Get the capabilities when initializing
@@ -686,7 +686,7 @@ index 4ff9486081..bd212abab8 100644
 From 84216c529675dac8d3aba301d2c02e666220c8c4 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 14 Dec 2021 13:49:25 +0800
-Subject: [PATCH 07/59] i386/tdx: Introduce is_tdx_vm() helper and cache
+Subject: [PATCH 07/60] i386/tdx: Introduce is_tdx_vm() helper and cache
  tdx_guest object
 
 It will need special handling for TDX VMs all around the QEMU.
@@ -781,7 +781,7 @@ index f3b7253361..de8ae91961 100644
 From e26b8c811d02575abb13b0d52f750d7ce22db985 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 8 Dec 2021 15:20:06 +0800
-Subject: [PATCH 08/59] kvm: Introduce kvm_arch_pre_create_vcpu()
+Subject: [PATCH 08/60] kvm: Introduce kvm_arch_pre_create_vcpu()
 
 Introduce kvm_arch_pre_create_vcpu(), to perform arch-dependent
 work prior to create any vcpu. This is for i386 TDX because it needs
@@ -957,7 +957,7 @@ index 4d56e653dd..1f592733f4 100644
 From c06219ce7daa82f893887f70ed4547acc17122c0 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 7 Dec 2023 02:27:28 -0500
-Subject: [PATCH 09/59] i386/tdx: Initialize TDX before creating TD vcpus
+Subject: [PATCH 09/60] i386/tdx: Initialize TDX before creating TD vcpus
 
 Invoke KVM_TDX_INIT in kvm_arch_pre_create_vcpu() that KVM_TDX_INIT
 configures global TD configurations, e.g. the canonical CPUID config,
@@ -1270,7 +1270,7 @@ index de8ae91961..4e2b5c61ff 100644
 From 69dde0e8940b79bff6ea620340f85f53abef8524 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 7 Dec 2023 02:29:16 -0500
-Subject: [PATCH 10/59] i386/tdx: Add property sept-ve-disable for tdx-guest
+Subject: [PATCH 10/60] i386/tdx: Add property sept-ve-disable for tdx-guest
  object
 
 Bit 28 of TD attribute, named SEPT_VE_DISABLE. When set to 1, it disables
@@ -1374,7 +1374,7 @@ index b8a85f2333..214ff7409e 100644
 From 47b32533ac600af6b0000a9ed813d70a187cd739 Mon Sep 17 00:00:00 2001
 From: Isaku Yamahata <isaku.yamahata@intel.com>
 Date: Mon, 31 Oct 2022 11:25:01 -0700
-Subject: [PATCH 11/59] i386/tdx: Make sept_ve_disable set by default
+Subject: [PATCH 11/60] i386/tdx: Make sept_ve_disable set by default
 
 For TDX KVM use case, Linux guest is the most major one.  It requires
 sept_ve_disable set.  Make it default for the main use case.  For other use
@@ -1406,7 +1406,7 @@ index 214ff7409e..dcb19a18e4 100644
 From 4d63a088c4029adb7d4016f65a85ee8eba60a8fd Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 18 Feb 2022 10:37:57 +0800
-Subject: [PATCH 12/59] i386/tdx: Wire CPU features up with attributes of TD
+Subject: [PATCH 12/60] i386/tdx: Wire CPU features up with attributes of TD
  guest
 
 For QEMU VMs,
@@ -1468,7 +1468,7 @@ index dcb19a18e4..653942d83b 100644
 From d010ca349f1f3d74ab9d70aecf7d39479727b7a3 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 4 Dec 2023 04:04:22 -0500
-Subject: [PATCH 13/59] i386/tdx: Validate TD attributes
+Subject: [PATCH 13/60] i386/tdx: Validate TD attributes
 
 Validate TD attributes with tdx_caps that only supported bits arer
 allowed by KVM.
@@ -1725,7 +1725,7 @@ index 4e2b5c61ff..e472b11fb0 100644
 From 2383ff1cf6675e5eb7a31f4c755e04dfcd368a50 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 28 Feb 2024 01:52:58 -0500
-Subject: [PATCH 14/59] i386/tdx: Set APIC bus rate to match with what TDX
+Subject: [PATCH 14/60] i386/tdx: Set APIC bus rate to match with what TDX
  module enforces
 
 TDX advertises core crystal clock with cpuid[0x15] as 25MHz for TD
@@ -1790,7 +1790,7 @@ index e472b11fb0..d39e733d9f 100644
 From d4f17786adafae300b33e08fd40e11296e7e457b Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 15 Mar 2021 15:16:55 +0800
-Subject: [PATCH 15/59] i386/tdx: Implement user specified tsc frequency
+Subject: [PATCH 15/60] i386/tdx: Implement user specified tsc frequency
 
 Reuse "-cpu,tsc-frequency=" to get user wanted tsc frequency and call VM
 scope VM_SET_TSC_KHZ to set the tsc frequency of TD before KVM_TDX_INIT_VM.
@@ -1882,7 +1882,7 @@ index 96138c2d2b..2124284e16 100644
 From b5ede5a82149a173ff7b1b734e4debdd1ad8ed5c Mon Sep 17 00:00:00 2001
 From: Chao Peng <chao.p.peng@linux.intel.com>
 Date: Fri, 2 Jun 2023 18:36:53 -0700
-Subject: [PATCH 16/59] i386/tdx: load TDVF for TD guest
+Subject: [PATCH 16/60] i386/tdx: load TDVF for TD guest
 
 TDVF(OVMF) needs to run at private memory for TD guest. TDX cannot
 support pflash device since it doesn't support read-only private memory.
@@ -1975,7 +1975,7 @@ index d39e733d9f..b73461b8d8 100644
 From 22c3bfe5494a76c02d8c3a94e3c805789311309d Mon Sep 17 00:00:00 2001
 From: Isaku Yamahata <isaku.yamahata@intel.com>
 Date: Mon, 6 Jul 2020 22:01:15 -0700
-Subject: [PATCH 17/59] i386/tdvf: Introduce function to parse TDVF metadata
+Subject: [PATCH 17/60] i386/tdvf: Introduce function to parse TDVF metadata
 
 TDX VM needs to boot with its specialized firmware, Trusted Domain
 Virtual Firmware (TDVF). QEMU needs to parse TDVF and map it in TD
@@ -2288,7 +2288,7 @@ index 0000000000..7ebcac42a3
 From 609bcbc3c91aa849f990d1c9f6dda68e6fdc50d1 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 27 Jan 2022 14:09:28 +0800
-Subject: [PATCH 18/59] i386/tdx: Parse TDVF metadata for TDX VM
+Subject: [PATCH 18/60] i386/tdx: Parse TDVF metadata for TDX VM
 
 After TDVF is loaded to bios MemoryRegion, it needs parse TDVF metadata.
 
@@ -2388,7 +2388,7 @@ index b73461b8d8..28a03c2a7b 100644
 From 135b7ca9d39bab96f62c96154aa087ecf1a461f2 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 11 Mar 2022 09:34:35 +0800
-Subject: [PATCH 19/59] i386/tdx: Don't initialize pc.rom for TDX VMs
+Subject: [PATCH 19/60] i386/tdx: Don't initialize pc.rom for TDX VMs
 
 For TDX, the address below 1MB are entirely general RAM. No need to
 initialize pc.rom memory region for TDs.
@@ -2460,7 +2460,7 @@ index b46975c8a4..44ccc82e24 100644
 From 5dabffe3fa40fdd87937ac4402a2853426496d0f Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 19 Apr 2022 09:58:06 +0800
-Subject: [PATCH 20/59] i386/tdx: Track mem_ptr for each firmware entry of TDVF
+Subject: [PATCH 20/60] i386/tdx: Track mem_ptr for each firmware entry of TDVF
 
 For each TDVF sections, QEMU needs to copy the content to guest
 private memory via KVM API (KVM_TDX_INIT_MEM_REGION).
@@ -2592,7 +2592,7 @@ index 73f90b0a22..8564b3ae90 100644
 From 362c5d5ba71001a8b876ee621fc28b9ceba50769 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 21 Feb 2022 16:16:09 +0800
-Subject: [PATCH 21/59] i386/tdx: Track RAM entries for TDX VM
+Subject: [PATCH 21/60] i386/tdx: Track RAM entries for TDX VM
 
 The RAM of TDX VM can be classified into two types:
 
@@ -2817,7 +2817,7 @@ index 28a03c2a7b..36a7400e74 100644
 From f8848d1a364758a2efe282750a01feda884b7424 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 1 Jun 2022 15:26:21 +0800
-Subject: [PATCH 22/59] headers: Add definitions from UEFI spec for volumes,
+Subject: [PATCH 22/60] headers: Add definitions from UEFI spec for volumes,
  resources, etc...
 
 Add UEFI definitions for literals, enums, structs, GUIDs, etc... that
@@ -3041,7 +3041,7 @@ index 0000000000..5256349ec0
 From e39d8c0cf917008764ecf1994e82d9afd267534a Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 21 Feb 2022 16:17:48 +0800
-Subject: [PATCH 23/59] i386/tdx: Setup the TD HOB list
+Subject: [PATCH 23/60] i386/tdx: Setup the TD HOB list
 
 The TD HOB list is used to pass the information from VMM to TDVF. The TD
 HOB must include PHIT HOB and Resource Descriptor HOB. More details can
@@ -3301,7 +3301,7 @@ index 2dcdc2a7d9..cac073a6d2 100644
 From baf8d5dd79dc67e0f314c383dd576327d350cc3e Mon Sep 17 00:00:00 2001
 From: Isaku Yamahata <isaku.yamahata@intel.com>
 Date: Thu, 9 Jul 2020 10:44:16 -0700
-Subject: [PATCH 24/59] i386/tdx: Add TDVF memory via KVM_TDX_INIT_MEM_REGION
+Subject: [PATCH 24/60] i386/tdx: Add TDVF memory via KVM_TDX_INIT_MEM_REGION
 
 TDVF firmware (CODE and VARS) needs to be copied to TD's private
 memory via KVM_TDX_INIT_MEM_REGION, as well as TD HOB and TEMP memory.
@@ -3396,7 +3396,7 @@ index cac073a6d2..08320b59b6 100644
 From 04b2f43a68ad3dc62b6e18f017635a1906996867 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 24 Jan 2022 21:27:56 -0600
-Subject: [PATCH 25/59] i386/tdx: Call KVM_TDX_INIT_VCPU to initialize TDX vcpu
+Subject: [PATCH 25/60] i386/tdx: Call KVM_TDX_INIT_VCPU to initialize TDX vcpu
 
 TDX vcpu needs to be initialized by SEAMCALL(TDH.VP.INIT) and KVM
 provides vcpu level IOCTL KVM_TDX_INIT_VCPU for it.
@@ -3449,7 +3449,7 @@ index 08320b59b6..99c1664d83 100644
 From 6c65723997eb076531bd166cb563b104ec187a57 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 14 Dec 2021 10:36:11 +0800
-Subject: [PATCH 26/59] i386/tdx: Finalize TDX VM
+Subject: [PATCH 26/60] i386/tdx: Finalize TDX VM
 
 Invoke KVM_TDX_FINALIZE_VM to finalize the TD's measurement and make
 the TD vCPUs runnable once machine initialization is complete.
@@ -3481,7 +3481,7 @@ index 99c1664d83..d7f7f8301c 100644
 From fd559b82f6e0fdd10200ea370b4669a1938644da Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 26 Aug 2024 02:21:59 -0700
-Subject: [PATCH 27/59] i386/tdx: Enable user exit on KVM_HC_MAP_GPA_RANGE
+Subject: [PATCH 27/60] i386/tdx: Enable user exit on KVM_HC_MAP_GPA_RANGE
 
 KVM translates TDG.VP.VMCALL<MapGPA> to KVM_HC_MAP_GPA_RANGE, and QEMU
 needs to enable user exit on KVM_HC_MAP_GPA_RANGE in order to handle the
@@ -3527,7 +3527,7 @@ index d7f7f8301c..1d0cf29c39 100644
 From 74b519b3971910e40242098f433249d81e01dea5 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 17 Jan 2023 22:31:52 +0800
-Subject: [PATCH 28/59] i386/tdx: Handle KVM_SYSTEM_EVENT_TDX_FATAL
+Subject: [PATCH 28/60] i386/tdx: Handle KVM_SYSTEM_EVENT_TDX_FATAL
 
 TD guest can use TDG.VP.VMCALL<REPORT_FATAL_ERROR> to request
 termination. KVM translates such request into KVM_EXIT_SYSTEM_EVENT with
@@ -3643,7 +3643,7 @@ index 36a7400e74..04b5afe199 100644
 From a9c004b03a0529cbe62db90306cae6be390033ea Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 17 Jan 2023 22:35:52 +0800
-Subject: [PATCH 29/59] i386/tdx: Wire TDX_REPORT_FATAL_ERROR with GuestPanic
+Subject: [PATCH 29/60] i386/tdx: Wire TDX_REPORT_FATAL_ERROR with GuestPanic
  facility
 
 Integrate TDX's TDX_REPORT_FATAL_ERROR into QEMU GuestPanic facility
@@ -3876,7 +3876,7 @@ index f857fddd83..591de30eed 100644
 From f66adc766323db57fe11923e362dbb3af8f2802c Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 5 Aug 2024 10:46:54 -0400
-Subject: [PATCH 30/59] i386/cpu: introduce
+Subject: [PATCH 30/60] i386/cpu: introduce
  x86_confidential_guest_cpu_instance_init()
 
 To allow execute confidential guest specific cpu init operations.
@@ -3954,7 +3954,7 @@ index 252a07fe82..a369cf90f5 100644
 From 54808e3fc42817ab11bc4c3ad39700d244cfb8a2 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 5 Aug 2024 10:49:47 -0400
-Subject: [PATCH 31/59] i386/tdx: implement tdx_cpu_instance_init()
+Subject: [PATCH 31/60] i386/tdx: implement tdx_cpu_instance_init()
 
 Currently, pmu is not supported for TDX by KVM.
 
@@ -3995,7 +3995,7 @@ index 591de30eed..12c1c25038 100644
 From 9f17299c1461c43c6455418f6fac014be6bd355d Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 2 Aug 2024 02:57:01 -0400
-Subject: [PATCH 32/59] i386/cpu: Introduce enable_cpuid_0x1f to force exposing
+Subject: [PATCH 32/60] i386/cpu: Introduce enable_cpuid_0x1f to force exposing
  CPUID 0x1f
 
 Currently, QEMU exposes CPUID 0x1f to guest only when necessary, i.e.,
@@ -4088,7 +4088,7 @@ index a76f345379..741b50181e 100644
 From db2b6c70c4e2e6077e6856150fe16ae238493f4a Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 2 Jul 2024 03:10:32 -0400
-Subject: [PATCH 33/59] i386/tdx: Force exposing CPUID 0x1f
+Subject: [PATCH 33/60] i386/tdx: Force exposing CPUID 0x1f
 
 TDX uses CPUID 0x1f to configure TD guest's CPU topology. So set
 enable_cpuid_0x1f for TDs.
@@ -4121,7 +4121,7 @@ index 12c1c25038..982ed779df 100644
 From 5aaf7634d1b4a92a4b6992584184c70713463590 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 27 Jan 2022 20:22:23 +0800
-Subject: [PATCH 34/59] i386/tdx: Set kvm_readonly_mem_enabled to false for TDX
+Subject: [PATCH 34/60] i386/tdx: Set kvm_readonly_mem_enabled to false for TDX
  VM
 
 TDX only supports readonly for shared memory but not for private memory.
@@ -4163,7 +4163,7 @@ index 982ed779df..f4d95b0a40 100644
 From e40adec75943f4837ec5cbd42bf4359d0c5c5153 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 13 Dec 2021 10:01:48 +0800
-Subject: [PATCH 35/59] i386/tdx: Disable SMM for TDX VMs
+Subject: [PATCH 35/60] i386/tdx: Disable SMM for TDX VMs
 
 TDX doesn't support SMM and VMM cannot emulate SMM for TDX VMs because
 VMM cannot manipulate TDX VM's memory.
@@ -4208,7 +4208,7 @@ index f4d95b0a40..10059ec8cf 100644
 From 9e8a9e53956830da6427a37bbe29943d7f52f266 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 12 Jan 2022 15:27:09 +0800
-Subject: [PATCH 36/59] i386/tdx: Disable PIC for TDX VMs
+Subject: [PATCH 36/60] i386/tdx: Disable PIC for TDX VMs
 
 Legacy PIC (8259) cannot be supported for TDX VMs since TDX module
 doesn't allow directly interrupt injection.  Using posted interrupts
@@ -4248,7 +4248,7 @@ index 10059ec8cf..dcbbe350ec 100644
 From f752b4588ed735c412a2cf322c6a95bd190b91d7 Mon Sep 17 00:00:00 2001
 From: Isaku Yamahata <isaku.yamahata@intel.com>
 Date: Wed, 9 Dec 2020 12:24:35 -0800
-Subject: [PATCH 37/59] i386/tdx: Don't synchronize guest tsc for TDs
+Subject: [PATCH 37/60] i386/tdx: Don't synchronize guest tsc for TDs
 
 TSC of TDs is not accessible and KVM doesn't allow access of
 MSR_IA32_TSC for TDs. To avoid the assert() in kvm_get_tsc, make
@@ -4282,7 +4282,7 @@ index 741b50181e..ead1d02633 100644
 From 3628f819d7277761ecb265eb03040c9fb3678953 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 16 Mar 2022 15:12:27 +0800
-Subject: [PATCH 38/59] i386/tdx: Only configure MSR_IA32_UCODE_REV in
+Subject: [PATCH 38/60] i386/tdx: Only configure MSR_IA32_UCODE_REV in
  kvm_init_msrs() for TDs
 
 For TDs, only MSR_IA32_UCODE_REV in kvm_init_msrs() can be configured
@@ -4362,7 +4362,7 @@ index ead1d02633..4078ba4047 100644
 From 2b67f176df4326035f480da147cf6a4ba386abb2 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 15 Jan 2025 10:31:16 -0500
-Subject: [PATCH 39/59] i386/apic: Skip kvm_apic_put() for TDX
+Subject: [PATCH 39/60] i386/apic: Skip kvm_apic_put() for TDX
 
 KVM neithers allow writing to MSR_IA32_APICBASE for TDs, nor allow for
 KVM_SET_LAPIC[*].
@@ -4413,7 +4413,7 @@ index 7575106000..a1850524a6 100644
 From 74fd4db975749fb6c4e80bc97910d00b2c794507 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 15 Jan 2025 10:56:00 -0500
-Subject: [PATCH 40/59] cpu: Don't set vcpu_dirty when guest_state_protected
+Subject: [PATCH 40/60] cpu: Don't set vcpu_dirty when guest_state_protected
 
 QEMU calls kvm_arch_put_registers() when vcpu_dirty is true in
 kvm_vcpu_exec(). However, for confidential guest, like TDX, putting
@@ -4453,7 +4453,7 @@ index e35a9fbd68..c1fea69d58 100644
 From e34948dce6a78b86f2fd0004cf25b7903b78c37b Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 11 Oct 2024 08:44:22 -0400
-Subject: [PATCH 41/59] i386/cgs: Rename *mask_cpuid_features() to
+Subject: [PATCH 41/60] i386/cgs: Rename *mask_cpuid_features() to
  *adjust_cpuid_features()
 
 Because for TDX case, there are also fixed-1 bits that enfored by TDX
@@ -4553,7 +4553,7 @@ index 0e1dbb6959..a6c0a69725 100644
 From e5ae51486c7cb67e185b79c7bcbb68190cf18e02 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 1 Nov 2024 04:06:26 -0400
-Subject: [PATCH 42/59] i386/tdx: Implement adjust_cpuid_features() for TDX
+Subject: [PATCH 42/60] i386/tdx: Implement adjust_cpuid_features() for TDX
 
 1. QEMU's support for Intel PT is borken in general, thus doesn't
    support for TDX.
@@ -4648,7 +4648,7 @@ index dcbbe350ec..9bdb9d7959 100644
 From 80f118ead6be272dc8e71bed914bf962e8ea02b5 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 1 Nov 2024 04:09:55 -0400
-Subject: [PATCH 43/59] i386/tdx: Apply TDX fixed0 and fixed1 information to
+Subject: [PATCH 43/60] i386/tdx: Apply TDX fixed0 and fixed1 information to
  supported CPUIDs
 
 TDX architecture forcibly sets some CPUID bits for TD guest that VMM
@@ -4873,7 +4873,7 @@ index a6c0a69725..217b19ad7b 100644
 From 2d5ad8b2cd1c0b0816b370b6c77d47fdc6081276 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 18 Sep 2024 04:15:47 -0400
-Subject: [PATCH 44/59] i386/tdx: Mask off CPUID bits by unsupported TD
+Subject: [PATCH 44/60] i386/tdx: Mask off CPUID bits by unsupported TD
  Attributes
 
 For TDX, some CPUID feature bit is configured via TD attributes. Adjust
@@ -4987,7 +4987,7 @@ index 2d493a0dc1..3997a439f0 100644
 From 8e00ff640b5c30cee1401efbf1665599d538dbfb Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 3 Sep 2024 22:46:42 -0400
-Subject: [PATCH 45/59] i386/cpu: Move CPUID_XSTATE_XSS_MASK to header file and
+Subject: [PATCH 45/60] i386/cpu: Move CPUID_XSTATE_XSS_MASK to header file and
  introduce CPUID_XSTATE_MASK
 
 They will be used by TDX.
@@ -5035,7 +5035,7 @@ index 4890424c3a..a4c0531262 100644
 From 166dc5b84f67d28be550cbde8cc98e801e671270 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 18 Sep 2024 04:41:33 -0400
-Subject: [PATCH 46/59] i386/tdx: Mask off CPUID bits by unsupported XFAM
+Subject: [PATCH 46/60] i386/tdx: Mask off CPUID bits by unsupported XFAM
 
 Mask off the CPUID bits as unsupported if its matched XFAM bit is
 not supported. Otherwise, it might fail the check in setup_td_xfam() as
@@ -5117,7 +5117,7 @@ index 3997a439f0..b46e581bb4 100644
 From 5f4035c6db3d267c51c5f96cdb42f648a6b2f87d Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 17 Dec 2024 03:00:17 -0500
-Subject: [PATCH 47/59] i386/tdx: Mark the configurable bit not reported by KVM
+Subject: [PATCH 47/60] i386/tdx: Mark the configurable bit not reported by KVM
  as unsupported
 
 There is no interface in KVM to report the support bits of TD guest.
@@ -5231,7 +5231,7 @@ index b46e581bb4..2b9a470209 100644
 From a6832175ad16f5dd64ec32545ff04da50eb10b2b Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 15 Aug 2024 09:51:35 -0400
-Subject: [PATCH 48/59] i386/cgs: Introduce
+Subject: [PATCH 48/60] i386/cgs: Introduce
  x86_confidential_guest_check_features()
 
 To do cgs specific feature checking. Note the feature checking in
@@ -5299,7 +5299,7 @@ index 17d7bf6ae9..27b4a069d1 100644
 From 90cc5a480d4363eab9e8a258507511a51f215888 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 16 Jul 2024 03:13:31 -0400
-Subject: [PATCH 49/59] i386/tdx: Fetch and validate CPUID of TD guest
+Subject: [PATCH 49/60] i386/tdx: Fetch and validate CPUID of TD guest
 
 Use KVM_TDX_GET_CPUID to get the CPUIDs that are managed and enfored
 by TDX module for TD guest. Check QEMU's configuration against the
@@ -5519,7 +5519,7 @@ index 2b9a470209..f6a4f3322e 100644
 From 76cde3ac46dff9868c385b23feda22d5a1b638ff Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 27 Aug 2024 02:01:24 -0400
-Subject: [PATCH 50/59] i386/tdx: Don't treat SYSCALL as unavailable
+Subject: [PATCH 50/60] i386/tdx: Don't treat SYSCALL as unavailable
 
 Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
 ---
@@ -5560,7 +5560,7 @@ index f6a4f3322e..58ea6a4d31 100644
 From df59432ef655b120e8d5129ac70d7587ff84fb99 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 27 Aug 2024 02:16:07 -0400
-Subject: [PATCH 51/59] i386/tdx: Make invtsc default on
+Subject: [PATCH 51/60] i386/tdx: Make invtsc default on
 
 Because it's fixed1 bit that enforced by TDX module.
 
@@ -5590,7 +5590,7 @@ index 58ea6a4d31..bb75eb06da 100644
 From 665a94084dbc39d520e0babedbdcf8920853d3b0 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 25 Nov 2024 21:36:13 -0500
-Subject: [PATCH 52/59] i386/tdx: Validate phys_bits against host value
+Subject: [PATCH 52/60] i386/tdx: Validate phys_bits against host value
 
 For TDX guest, the phys_bits is not configurable and can only be
 host/native value.
@@ -5662,7 +5662,7 @@ index bb75eb06da..c906a76c4c 100644
 From 359b65e69aa996d3a624c9c0a48162f6e6e2300c Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 1 Mar 2022 11:14:09 +0800
-Subject: [PATCH 53/59] docs: Add TDX documentation
+Subject: [PATCH 53/60] docs: Add TDX documentation
 
 Add docs/system/i386/tdx.rst for TDX support, and add tdx in
 confidential-guest-support.rst
@@ -5883,7 +5883,7 @@ index ab7af1a75d..43b09c79d6 100644
 From 4dd18301df09ab6fb0e318208d972efe1e3ea2e5 Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
 Date: Mon, 9 Dec 2024 17:31:01 +0800
-Subject: [PATCH 54/59] memory: Export a helper to get intersection of a
+Subject: [PATCH 54/60] memory: Export a helper to get intersection of a
  MemoryRegionSection with a given range
 
 Rename the helper to memory_region_section_intersect_range() to make it
@@ -6033,7 +6033,7 @@ index b17b5538ff..d6d55d3a93 100644
 From c4eeb46bccd79483ff34362cb0428b16de589775 Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
 Date: Wed, 12 Jun 2024 09:22:16 +0000
-Subject: [PATCH 55/59] guest_memfd: Introduce an object to manage the
+Subject: [PATCH 55/60] guest_memfd: Introduce an object to manage the
  guest-memfd with RamDiscardManager
 
 As the commit 852f0048f3 ("RAMBlock: make guest_memfd require
@@ -6418,7 +6418,7 @@ index 4952f4b2c7..ed4e1137bd 100644
 From dd211bf4a087dab2a0244a105e0e239fee626807 Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
 Date: Tue, 18 Jun 2024 05:32:07 +0000
-Subject: [PATCH 56/59] guest_memfd: Introduce a callback to notify the
+Subject: [PATCH 56/60] guest_memfd: Introduce a callback to notify the
  shared/private state change
 
 Introduce a new state_change() callback in GuestMemfdManagerClass to
@@ -6632,7 +6632,7 @@ index 3c370ba6d4..ac273cd1e1 100644
 From f2ba8f9aa220effd6578136c5e206f863f0948de Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
 Date: Fri, 14 Jun 2024 08:20:22 +0000
-Subject: [PATCH 57/59] KVM: Notify the state change event during
+Subject: [PATCH 57/60] KVM: Notify the state change event during
  shared/private conversion
 
 Introduce a helper to trigger the state_change() callback of the class.
@@ -6699,7 +6699,7 @@ index f597c26b6e..6beff3e5d2 100644
 From 5b01ee93fa4c531f7cb82e80700d72bff536e6fd Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
 Date: Tue, 18 Jun 2024 07:31:33 +0000
-Subject: [PATCH 58/59] memory: Register the RamDiscardManager instance upon
+Subject: [PATCH 58/60] memory: Register the RamDiscardManager instance upon
  guest_memfd creation
 
 Introduce the realize()/unrealize() callbacks to initialize/uninitialize
@@ -6855,7 +6855,7 @@ index c76503aea8..6507c8137d 100644
 From 4110cda58a397a966e433d97b32a726cde08c042 Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
 Date: Fri, 21 Jun 2024 03:24:55 +0000
-Subject: [PATCH 59/59] RAMBlock: make guest_memfd require coordinate discard
+Subject: [PATCH 59/60] RAMBlock: make guest_memfd require coordinate discard
 
 As guest_memfd is now managed by guest_memfd_manager with
 RamDiscardManager, only block uncoordinated discard.
@@ -6878,6 +6878,66 @@ index 6507c8137d..68fe5e8b1a 100644
          if (ret < 0) {
              error_setg_errno(errp, -ret,
                               "cannot set up private guest memory: discard currently blocked");
+-- 
+2.43.5
+
+
+From cbd523b211a7c9eb151c4fa078534daeb162591b Mon Sep 17 00:00:00 2001
+From: Binbin Wu <binbin.wu@linux.intel.com>
+Date: Tue, 18 Feb 2025 14:02:31 +0800
+Subject: [PATCH 60/60] fixup! i386/tdx: Handle KVM_SYSTEM_EVENT_TDX_FATAL
+
+---
+ target/i386/kvm/tdx.c | 21 ++++++++++++++++-----
+ 1 file changed, 16 insertions(+), 5 deletions(-)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index c906a76c4c..d4d7ac81b5 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -1071,7 +1071,7 @@ static void tdx_panicked_on_fatal_error(X86CPU *cpu, uint64_t error_code,
+ 
+ int tdx_handle_report_fatal_error(X86CPU *cpu, struct kvm_run *run)
+ {
+-    uint64_t error_code = run->system_event.data[0];
++    uint64_t error_code = run->system_event.data[R_R12];
+     char *message = NULL;
+     uint64_t gpa = -1ull;
+ 
+@@ -1081,18 +1081,29 @@ int tdx_handle_report_fatal_error(X86CPU *cpu, struct kvm_run *run)
+         return -1;
+     }
+ 
+-    /* It has optional message */
+-    if (run->system_event.data[2]) {
++    /* It has optional message, treat it as ASCII byte stream. */
++    if (run->system_event.data[R_R14]) {
++	uint64_t * tmp;
++
+ #define TDX_FATAL_MESSAGE_MAX        64
+         message = g_malloc0(TDX_FATAL_MESSAGE_MAX + 1);
+ 
+-        memcpy(message, &run->system_event.data[2], TDX_FATAL_MESSAGE_MAX);
++	tmp = (uint64_t *)message;
++        /* The order is defined in TDX GHCI spec */
++        *(tmp++) = cpu_to_le64(run->system_event.data[R_R14]);
++        *(tmp++) = cpu_to_le64(run->system_event.data[R_R15]);
++        *(tmp++) = cpu_to_le64(run->system_event.data[R_EBX]);
++        *(tmp++) = cpu_to_le64(run->system_event.data[R_EDI]);
++        *(tmp++) = cpu_to_le64(run->system_event.data[R_ESI]);
++        *(tmp++) = cpu_to_le64(run->system_event.data[R_R8]);
++        *(tmp++) = cpu_to_le64(run->system_event.data[R_R9]);
++        *(tmp++) = cpu_to_le64(run->system_event.data[R_EDX]);
+         message[TDX_FATAL_MESSAGE_MAX] = '\0';
+     }
+ 
+ #define TDX_REPORT_FATAL_ERROR_GPA_VALID    BIT_ULL(63)
+     if (error_code & TDX_REPORT_FATAL_ERROR_GPA_VALID) {
+-        gpa = run->system_event.data[1];
++        gpa = run->system_event.data[R_R13];
+     }
+ 
+     tdx_panicked_on_fatal_error(cpu, error_code, message, gpa);
 -- 
 2.43.5
 

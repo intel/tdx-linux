@@ -57,3 +57,4 @@ guest_memfd: Introduce a callback to notify the shared/private state change
 KVM: Notify the state change event during shared/private conversion
 memory: Register the RamDiscardManager instance upon guest_memfd creation
 RAMBlock: make guest_memfd require coordinate discard
+fixup! i386/tdx: Handle KVM_SYSTEM_EVENT_TDX_FATAL

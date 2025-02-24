@@ -1,19 +1,7 @@
 FIRST_TDX_COMMIT
-[MARKER] The start of TDX KVM patch series: TD vcpu enter/exit
-x86/virt/tdx: Make tdh_vp_enter() noinstr
-KVM: x86: Allow the use of kvm_load_host_xsave_state() with guest_state_protected
-KVM: TDX: Set arch.has_protected_state to true
-KVM: VMX: Move common fields of struct vcpu_{vmx,tdx} to a struct
-KVM: TDX: Implement TDX vcpu enter/exit path
-KVM: TDX: vcpu_run: save/restore host state(host kernel gs)
-KVM: TDX: restore host xsave state when exit from the guest TD
-KVM: x86: Allow to update cached values in kvm_user_return_msrs w/o wrmsr
-KVM: TDX: restore user ret MSRs
-KVM: TDX: Disable support for TSX and WAITPKG
-KVM: TDX: Save and restore IA32_DEBUGCTL
-KVM: x86: Add a switch_db_regs flag to handle TDX's auto-switched behavior
 [MARKER] The start of TDX KVM patch series: Hypercalls exit to userspace
 KVM: x86: Have ____kvm_emulate_hypercall() read the GPRs
+KVM: x86: Move pv_unhaulted check out of kvm_vcpu_has_events()
 KVM: TDX: Add a place holder to handle TDX VM exit
 KVM: TDX: Add a place holder for handler of TDX hypercalls (TDG.VP.VMCALL)
 KVM: TDX: Handle KVM hypercall with TDG.VP.VMCALL
@@ -29,7 +17,6 @@ KVM: TDX: Implement non-NMI interrupt injection
 KVM: x86: Assume timer IRQ was injected if APIC state is protected
 KVM: TDX: Wait lapic expire when timer IRQ was injected
 KVM: TDX: Implement methods to inject NMI
-KVM: TDX: Complete interrupts after TD exit
 KVM: TDX: Handle SMI request as !CONFIG_KVM_SMM
 KVM: TDX: Always block INIT/SIPI
 KVM: TDX: Enforce KVM_IRQCHIP_SPLIT for TDX guests
@@ -58,11 +45,11 @@ KVM: TDX: Add methods to ignore accesses to TSC
 KVM: TDX: Ignore setting up mce
 KVM: TDX: Add a method to ignore hypercall patching
 KVM: TDX: Make TDX VM type supported
-KVM: TDX: Add a method to ignore updating CPU dirty logging request for TDs
-KVM: Add parameter "kvm" to kvm_cpu_dirty_log_size() and its callers
-KVM: x86/mmu: Add parameter "kvm" to kvm_mmu_page_ad_need_write_protect()
-KVM: x86: Make cpu_dirty_log_size a per-VM value
+KVM: TDX: Enable guest access to MTRR MSRs
 Documentation/virt/kvm: Document on Trust Domain Extensions(TDX)
+[MARKER] The start of: Fixes for Paolo to squash
+KVM: x86/mmu: Bail out kvm_tdp_map_page() when VM dead
+Consider squashing to "KVM: VMX: Refactor VMX module init/exit functions"
 LAST_TDX_COMMIT
 KVM: selftests: Add printf attribute to _no_printf()
 KVM: selftests: Add function to allow one-to-one GVA to GPA mappings
@@ -96,3 +83,4 @@ KVM: selftests: Propagate KVM_EXIT_MEMORY_FAULT to userspace
 KVM: selftests: TDX: Add TDX UPM selftest
 KVM: selftests: TDX: Add TDX UPM selftests for implicit conversion
 KVM: selftests: TDX: Test LOG_DIRTY_PAGES flag to a non-GUEST_MEMFD memslot
+LAST_TDX_SELFTESTS_COMMIT
