@@ -1,16 +1,92 @@
-From ea594ac9a1026fc7e13cc1b7893c10a13df5f787 Mon Sep 17 00:00:00 2001
-From: Xiaoyao Li <xiaoyao.li@intel.com>
-Date: Sun, 25 Aug 2024 23:21:40 -0400
-Subject: [PATCH 01/60] FIRST_TDX_COMMIT
+From e363b614cc1628083e960239d543a39cf1ce8649 Mon Sep 17 00:00:00 2001
+From: Lei Wang <lei4.wang@intel.com>
+Date: Fri, 6 Jan 2023 00:38:22 -0800
+Subject: [PATCH 01/62] i386: Remove unused parameter "uint32_t bit" in
+ feature_word_description()
 
+Parameter "uint32_t bit" is not used in function feature_word_description(),
+so remove it.
+
+Signed-off-by: Lei Wang <lei4.wang@intel.com>
+Reviewed-by: Igor Mammedov <imammedo@redhat.com>
+Reviewed-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+ target/i386/cpu.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index 1b9c11022c..50278a7ad7 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -5450,7 +5450,7 @@ static const TypeInfo max_x86_cpu_type_info = {
+     .class_init = max_x86_cpu_class_init,
+ };
+ 
+-static char *feature_word_description(FeatureWordInfo *f, uint32_t bit)
++static char *feature_word_description(FeatureWordInfo *f)
+ {
+     assert(f->type == CPUID_FEATURE_WORD || f->type == MSR_FEATURE_WORD);
+ 
+@@ -5489,6 +5489,7 @@ static void mark_unavailable_features(X86CPU *cpu, FeatureWord w, uint64_t mask,
+     CPUX86State *env = &cpu->env;
+     FeatureWordInfo *f = &feature_word_info[w];
+     int i;
++    g_autofree char *feat_word_str = feature_word_description(f);
+ 
+     if (!cpu->force_features) {
+         env->features[w] &= ~mask;
+@@ -5501,7 +5502,6 @@ static void mark_unavailable_features(X86CPU *cpu, FeatureWord w, uint64_t mask,
+ 
+     for (i = 0; i < 64; ++i) {
+         if ((1ULL << i) & mask) {
+-            g_autofree char *feat_word_str = feature_word_description(f, i);
+             warn_report("%s: %s%s%s [bit %d]",
+                         verbose_prefix,
+                         feat_word_str,
 -- 
-2.43.5
+2.25.1
+
+
+From 8b107e0e8704ca5a49fc329ad40905f7a155ff96 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Mon, 8 Aug 2022 16:58:27 +0800
+Subject: [PATCH 02/62] target/i386: Print CPUID subleaf info for unsupported
+ feature
+
+Some CPUID leaves have meaningful subleaf index. Print the subleaf info
+in feature_word_description for CPUID features.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Reviewed-by: Eduardo Habkost <ehabkost@redhat.com>
+---
+ target/i386/cpu.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index 50278a7ad7..252a07fe82 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -5459,8 +5459,9 @@ static char *feature_word_description(FeatureWordInfo *f)
+         {
+             const char *reg = get_register_name_32(f->cpuid.reg);
+             assert(reg);
+-            return g_strdup_printf("CPUID.%02XH:%s",
+-                                   f->cpuid.eax, reg);
++            return g_strdup_printf("CPUID.%02XH_%02XH:%s",
++                                   f->cpuid.eax,
++                                   f->cpuid.needs_ecx ? f->cpuid.ecx : 0, reg);
+         }
+     case MSR_FEATURE_WORD:
+         return g_strdup_printf("MSR(%02XH)",
+-- 
+2.25.1
 
 
 From 38f744a690b768baaf9463a77a5ac8fc7e9fd316 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 30 Dec 2022 10:16:29 +0800
-Subject: [PATCH 02/60] *** HACK *** linux-headers: Update headers to pull in
+Subject: [PATCH 04/62] *** HACK *** linux-headers: Update headers to pull in
  TDX API changes
 
 Pull in recent TDX updates, which are not backwards compatible.
@@ -120,13 +196,13 @@ index 3bcd4eabe3..b325122505 100644
  			__u32 ndata;
  			union {
 -- 
-2.43.5
+2.25.1
 
 
 From 3225a51f54fcbd31cb37989b5b6563d1de23266d Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 9 Dec 2021 16:55:40 +0800
-Subject: [PATCH 03/60] i386: Introduce tdx-guest object
+Subject: [PATCH 05/62] i386: Introduce tdx-guest object
 
 Introduce tdx-guest object which inherits X86_CONFIDENTIAL_GUEST,
 and will be used to create TDX VMs (TDs) by
@@ -333,13 +409,13 @@ index 0000000000..f3b7253361
 +
 +#endif /* QEMU_I386_TDX_H */
 -- 
-2.43.5
+2.25.1
 
 
 From 63177fc3e47552c69252e69d280a523f6bac9048 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 7 Dec 2021 17:04:53 +0800
-Subject: [PATCH 04/60] i386/tdx: Implement tdx_kvm_type() for TDX
+Subject: [PATCH 06/62] i386/tdx: Implement tdx_kvm_type() for TDX
 
 TDX VM requires VM type to be KVM_X86_TDX_VM. Implement tdx_kvm_type()
 as X86ConfidentialGuestClass->kvm_type.
@@ -396,13 +472,13 @@ index ec84ae2947..d785c1f6d1 100644
 +    x86_klass->kvm_type = tdx_kvm_type;
  }
 -- 
-2.43.5
+2.25.1
 
 
 From 0c6725bcdd85c6eb40d9e0f3e1c062aa8b64d3cc Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 3 Apr 2020 11:21:22 +0800
-Subject: [PATCH 05/60] i386/tdx: Implement tdx_kvm_init() to initialize TDX VM
+Subject: [PATCH 07/62] i386/tdx: Implement tdx_kvm_init() to initialize TDX VM
  context
 
 Implement TDX specific ConfidentialGuestSupportClass::kvm_init()
@@ -476,13 +552,13 @@ index d785c1f6d1..4ff9486081 100644
      x86_klass->kvm_type = tdx_kvm_type;
  }
 -- 
-2.43.5
+2.25.1
 
 
 From 6e6e546fb66c2fbb18ad967ad2933b056ef677b9 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 8 Dec 2021 13:46:25 +0800
-Subject: [PATCH 06/60] i386/tdx: Get tdx_capabilities via KVM_TDX_CAPABILITIES
+Subject: [PATCH 08/62] i386/tdx: Get tdx_capabilities via KVM_TDX_CAPABILITIES
 
 KVM provides TDX capabilities via sub command KVM_TDX_CAPABILITIES of
 IOCTL(KVM_MEMORY_ENCRYPT_OP). Get the capabilities when initializing
@@ -680,13 +756,13 @@ index 4ff9486081..bd212abab8 100644
  
  static int tdx_kvm_type(X86ConfidentialGuest *cg)
 -- 
-2.43.5
+2.25.1
 
 
 From 84216c529675dac8d3aba301d2c02e666220c8c4 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 14 Dec 2021 13:49:25 +0800
-Subject: [PATCH 07/60] i386/tdx: Introduce is_tdx_vm() helper and cache
+Subject: [PATCH 09/62] i386/tdx: Introduce is_tdx_vm() helper and cache
  tdx_guest object
 
 It will need special handling for TDX VMs all around the QEMU.
@@ -775,13 +851,13 @@ index f3b7253361..de8ae91961 100644
 +
  #endif /* QEMU_I386_TDX_H */
 -- 
-2.43.5
+2.25.1
 
 
 From e26b8c811d02575abb13b0d52f750d7ce22db985 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 8 Dec 2021 15:20:06 +0800
-Subject: [PATCH 08/60] kvm: Introduce kvm_arch_pre_create_vcpu()
+Subject: [PATCH 10/62] kvm: Introduce kvm_arch_pre_create_vcpu()
 
 Introduce kvm_arch_pre_create_vcpu(), to perform arch-dependent
 work prior to create any vcpu. This is for i386 TDX because it needs
@@ -951,13 +1027,13 @@ index 4d56e653dd..1f592733f4 100644
  {
      unsigned int max_cpus = MACHINE(qdev_get_machine())->smp.max_cpus;
 -- 
-2.43.5
+2.25.1
 
 
 From c06219ce7daa82f893887f70ed4547acc17122c0 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 7 Dec 2023 02:27:28 -0500
-Subject: [PATCH 09/60] i386/tdx: Initialize TDX before creating TD vcpus
+Subject: [PATCH 11/62] i386/tdx: Initialize TDX before creating TD vcpus
 
 Invoke KVM_TDX_INIT in kvm_arch_pre_create_vcpu() that KVM_TDX_INIT
 configures global TD configurations, e.g. the canonical CPUID config,
@@ -1264,13 +1340,13 @@ index de8ae91961..4e2b5c61ff 100644
 +
  #endif /* QEMU_I386_TDX_H */
 -- 
-2.43.5
+2.25.1
 
 
 From 69dde0e8940b79bff6ea620340f85f53abef8524 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 7 Dec 2023 02:29:16 -0500
-Subject: [PATCH 10/60] i386/tdx: Add property sept-ve-disable for tdx-guest
+Subject: [PATCH 12/62] i386/tdx: Add property sept-ve-disable for tdx-guest
  object
 
 Bit 28 of TD attribute, named SEPT_VE_DISABLE. When set to 1, it disables
@@ -1368,13 +1444,13 @@ index b8a85f2333..214ff7409e 100644
  
  static void tdx_guest_finalize(Object *obj)
 -- 
-2.43.5
+2.25.1
 
 
 From 47b32533ac600af6b0000a9ed813d70a187cd739 Mon Sep 17 00:00:00 2001
 From: Isaku Yamahata <isaku.yamahata@intel.com>
 Date: Mon, 31 Oct 2022 11:25:01 -0700
-Subject: [PATCH 11/60] i386/tdx: Make sept_ve_disable set by default
+Subject: [PATCH 13/62] i386/tdx: Make sept_ve_disable set by default
 
 For TDX KVM use case, Linux guest is the most major one.  It requires
 sept_ve_disable set.  Make it default for the main use case.  For other use
@@ -1400,13 +1476,13 @@ index 214ff7409e..dcb19a18e4 100644
      object_property_add_uint64_ptr(obj, "attributes", &tdx->attributes,
                                     OBJ_PROP_FLAG_READWRITE);
 -- 
-2.43.5
+2.25.1
 
 
 From 4d63a088c4029adb7d4016f65a85ee8eba60a8fd Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 18 Feb 2022 10:37:57 +0800
-Subject: [PATCH 12/60] i386/tdx: Wire CPU features up with attributes of TD
+Subject: [PATCH 14/62] i386/tdx: Wire CPU features up with attributes of TD
  guest
 
 For QEMU VMs,
@@ -1462,13 +1538,13 @@ index dcb19a18e4..653942d83b 100644
      if (r) {
          return r;
 -- 
-2.43.5
+2.25.1
 
 
 From d010ca349f1f3d74ab9d70aecf7d39479727b7a3 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 4 Dec 2023 04:04:22 -0500
-Subject: [PATCH 13/60] i386/tdx: Validate TD attributes
+Subject: [PATCH 15/62] i386/tdx: Validate TD attributes
 
 Validate TD attributes with tdx_caps that only supported bits arer
 allowed by KVM.
@@ -1719,13 +1795,13 @@ index 4e2b5c61ff..e472b11fb0 100644
  
  #ifdef CONFIG_TDX
 -- 
-2.43.5
+2.25.1
 
 
 From 2383ff1cf6675e5eb7a31f4c755e04dfcd368a50 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 28 Feb 2024 01:52:58 -0500
-Subject: [PATCH 14/60] i386/tdx: Set APIC bus rate to match with what TDX
+Subject: [PATCH 16/62] i386/tdx: Set APIC bus rate to match with what TDX
  module enforces
 
 TDX advertises core crystal clock with cpuid[0x15] as 25MHz for TD
@@ -1784,13 +1860,13 @@ index e472b11fb0..d39e733d9f 100644
      X86ConfidentialGuest parent_obj;
  
 -- 
-2.43.5
+2.25.1
 
 
 From d4f17786adafae300b33e08fd40e11296e7e457b Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 15 Mar 2021 15:16:55 +0800
-Subject: [PATCH 15/60] i386/tdx: Implement user specified tsc frequency
+Subject: [PATCH 17/62] i386/tdx: Implement user specified tsc frequency
 
 Reuse "-cpu,tsc-frequency=" to get user wanted tsc frequency and call VM
 scope VM_SET_TSC_KHZ to set the tsc frequency of TD before KVM_TDX_INIT_VM.
@@ -1876,13 +1952,13 @@ index 96138c2d2b..2124284e16 100644
          g_autofree uint8_t *data = qbase64_decode(tdx_guest->mrconfigid,
                                strlen(tdx_guest->mrconfigid), &data_len, errp);
 -- 
-2.43.5
+2.25.1
 
 
 From b5ede5a82149a173ff7b1b734e4debdd1ad8ed5c Mon Sep 17 00:00:00 2001
 From: Chao Peng <chao.p.peng@linux.intel.com>
 Date: Fri, 2 Jun 2023 18:36:53 -0700
-Subject: [PATCH 16/60] i386/tdx: load TDVF for TD guest
+Subject: [PATCH 18/62] i386/tdx: load TDVF for TD guest
 
 TDVF(OVMF) needs to run at private memory for TD guest. TDX cannot
 support pflash device since it doesn't support read-only private memory.
@@ -1969,13 +2045,13 @@ index d39e733d9f..b73461b8d8 100644
  
  #endif /* QEMU_I386_TDX_H */
 -- 
-2.43.5
+2.25.1
 
 
 From 22c3bfe5494a76c02d8c3a94e3c805789311309d Mon Sep 17 00:00:00 2001
 From: Isaku Yamahata <isaku.yamahata@intel.com>
 Date: Mon, 6 Jul 2020 22:01:15 -0700
-Subject: [PATCH 17/60] i386/tdvf: Introduce function to parse TDVF metadata
+Subject: [PATCH 19/62] i386/tdvf: Introduce function to parse TDVF metadata
 
 TDX VM needs to boot with its specialized firmware, Trusted Domain
 Virtual Firmware (TDVF). QEMU needs to parse TDVF and map it in TD
@@ -2282,13 +2358,13 @@ index 0000000000..7ebcac42a3
 +
 +#endif /* HW_I386_TDVF_H */
 -- 
-2.43.5
+2.25.1
 
 
 From 609bcbc3c91aa849f990d1c9f6dda68e6fdc50d1 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 27 Jan 2022 14:09:28 +0800
-Subject: [PATCH 18/60] i386/tdx: Parse TDVF metadata for TDX VM
+Subject: [PATCH 20/62] i386/tdx: Parse TDVF metadata for TDX VM
 
 After TDVF is loaded to bios MemoryRegion, it needs parse TDVF metadata.
 
@@ -2382,13 +2458,13 @@ index b73461b8d8..28a03c2a7b 100644
  
  #endif /* QEMU_I386_TDX_H */
 -- 
-2.43.5
+2.25.1
 
 
 From 135b7ca9d39bab96f62c96154aa087ecf1a461f2 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 11 Mar 2022 09:34:35 +0800
-Subject: [PATCH 19/60] i386/tdx: Don't initialize pc.rom for TDX VMs
+Subject: [PATCH 21/62] i386/tdx: Don't initialize pc.rom for TDX VMs
 
 For TDX, the address below 1MB are entirely general RAM. No need to
 initialize pc.rom memory region for TDs.
@@ -2454,13 +2530,13 @@ index b46975c8a4..44ccc82e24 100644
      fw_cfg = fw_cfg_arch_create(machine,
                                  x86ms->boot_cpus, x86ms->apic_id_limit);
 -- 
-2.43.5
+2.25.1
 
 
 From 5dabffe3fa40fdd87937ac4402a2853426496d0f Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 19 Apr 2022 09:58:06 +0800
-Subject: [PATCH 20/60] i386/tdx: Track mem_ptr for each firmware entry of TDVF
+Subject: [PATCH 22/62] i386/tdx: Track mem_ptr for each firmware entry of TDVF
 
 For each TDVF sections, QEMU needs to copy the content to guest
 private memory via KVM API (KVM_TDX_INIT_MEM_REGION).
@@ -2586,13 +2662,13 @@ index 73f90b0a22..8564b3ae90 100644
      return 0;
  }
 -- 
-2.43.5
+2.25.1
 
 
 From 362c5d5ba71001a8b876ee621fc28b9ceba50769 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 21 Feb 2022 16:16:09 +0800
-Subject: [PATCH 21/60] i386/tdx: Track RAM entries for TDX VM
+Subject: [PATCH 23/62] i386/tdx: Track RAM entries for TDX VM
 
 The RAM of TDX VM can be classified into two types:
 
@@ -2811,13 +2887,13 @@ index 28a03c2a7b..36a7400e74 100644
  
  #ifdef CONFIG_TDX
 -- 
-2.43.5
+2.25.1
 
 
 From f8848d1a364758a2efe282750a01feda884b7424 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 1 Jun 2022 15:26:21 +0800
-Subject: [PATCH 22/60] headers: Add definitions from UEFI spec for volumes,
+Subject: [PATCH 24/62] headers: Add definitions from UEFI spec for volumes,
  resources, etc...
 
 Add UEFI definitions for literals, enums, structs, GUIDs, etc... that
@@ -3035,13 +3111,13 @@ index 0000000000..5256349ec0
 +
 +#endif
 -- 
-2.43.5
+2.25.1
 
 
 From e39d8c0cf917008764ecf1994e82d9afd267534a Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 21 Feb 2022 16:17:48 +0800
-Subject: [PATCH 23/60] i386/tdx: Setup the TD HOB list
+Subject: [PATCH 25/62] i386/tdx: Setup the TD HOB list
 
 The TD HOB list is used to pass the information from VMM to TDVF. The TD
 HOB must include PHIT HOB and Resource Descriptor HOB. More details can
@@ -3295,13 +3371,13 @@ index 2dcdc2a7d9..cac073a6d2 100644
  
  static Notifier tdx_machine_done_notify = {
 -- 
-2.43.5
+2.25.1
 
 
 From baf8d5dd79dc67e0f314c383dd576327d350cc3e Mon Sep 17 00:00:00 2001
 From: Isaku Yamahata <isaku.yamahata@intel.com>
 Date: Thu, 9 Jul 2020 10:44:16 -0700
-Subject: [PATCH 24/60] i386/tdx: Add TDVF memory via KVM_TDX_INIT_MEM_REGION
+Subject: [PATCH 26/62] i386/tdx: Add TDVF memory via KVM_TDX_INIT_MEM_REGION
 
 TDVF firmware (CODE and VARS) needs to be copied to TD's private
 memory via KVM_TDX_INIT_MEM_REGION, as well as TD HOB and TEMP memory.
@@ -3390,13 +3466,13 @@ index cac073a6d2..08320b59b6 100644
  
  static Notifier tdx_machine_done_notify = {
 -- 
-2.43.5
+2.25.1
 
 
 From 04b2f43a68ad3dc62b6e18f017635a1906996867 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 24 Jan 2022 21:27:56 -0600
-Subject: [PATCH 25/60] i386/tdx: Call KVM_TDX_INIT_VCPU to initialize TDX vcpu
+Subject: [PATCH 27/62] i386/tdx: Call KVM_TDX_INIT_VCPU to initialize TDX vcpu
 
 TDX vcpu needs to be initialized by SEAMCALL(TDH.VP.INIT) and KVM
 provides vcpu level IOCTL KVM_TDX_INIT_VCPU for it.
@@ -3443,13 +3519,13 @@ index 08320b59b6..99c1664d83 100644
          struct kvm_tdx_init_mem_region region;
          uint32_t flags;
 -- 
-2.43.5
+2.25.1
 
 
 From 6c65723997eb076531bd166cb563b104ec187a57 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 14 Dec 2021 10:36:11 +0800
-Subject: [PATCH 26/60] i386/tdx: Finalize TDX VM
+Subject: [PATCH 28/62] i386/tdx: Finalize TDX VM
 
 Invoke KVM_TDX_FINALIZE_VM to finalize the TD's measurement and make
 the TD vCPUs runnable once machine initialization is complete.
@@ -3475,13 +3551,13 @@ index 99c1664d83..d7f7f8301c 100644
  
  static Notifier tdx_machine_done_notify = {
 -- 
-2.43.5
+2.25.1
 
 
 From fd559b82f6e0fdd10200ea370b4669a1938644da Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 26 Aug 2024 02:21:59 -0700
-Subject: [PATCH 27/60] i386/tdx: Enable user exit on KVM_HC_MAP_GPA_RANGE
+Subject: [PATCH 29/62] i386/tdx: Enable user exit on KVM_HC_MAP_GPA_RANGE
 
 KVM translates TDG.VP.VMCALL<MapGPA> to KVM_HC_MAP_GPA_RANGE, and QEMU
 needs to enable user exit on KVM_HC_MAP_GPA_RANGE in order to handle the
@@ -3521,13 +3597,13 @@ index d7f7f8301c..1d0cf29c39 100644
  
      tdx_guest = tdx;
 -- 
-2.43.5
+2.25.1
 
 
 From 74b519b3971910e40242098f433249d81e01dea5 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 17 Jan 2023 22:31:52 +0800
-Subject: [PATCH 28/60] i386/tdx: Handle KVM_SYSTEM_EVENT_TDX_FATAL
+Subject: [PATCH 30/62] i386/tdx: Handle KVM_SYSTEM_EVENT_TDX_FATAL
 
 TD guest can use TDG.VP.VMCALL<REPORT_FATAL_ERROR> to request
 termination. KVM translates such request into KVM_EXIT_SYSTEM_EVENT with
@@ -3637,13 +3713,13 @@ index 36a7400e74..04b5afe199 100644
  
  #endif /* QEMU_I386_TDX_H */
 -- 
-2.43.5
+2.25.1
 
 
 From a9c004b03a0529cbe62db90306cae6be390033ea Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 17 Jan 2023 22:35:52 +0800
-Subject: [PATCH 29/60] i386/tdx: Wire TDX_REPORT_FATAL_ERROR with GuestPanic
+Subject: [PATCH 31/62] i386/tdx: Wire TDX_REPORT_FATAL_ERROR with GuestPanic
  facility
 
 Integrate TDX's TDX_REPORT_FATAL_ERROR into QEMU GuestPanic facility
@@ -3870,13 +3946,13 @@ index f857fddd83..591de30eed 100644
  }
  
 -- 
-2.43.5
+2.25.1
 
 
 From f66adc766323db57fe11923e362dbb3af8f2802c Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 5 Aug 2024 10:46:54 -0400
-Subject: [PATCH 30/60] i386/cpu: introduce
+Subject: [PATCH 32/62] i386/cpu: introduce
  x86_confidential_guest_cpu_instance_init()
 
 To allow execute confidential guest specific cpu init operations.
@@ -3948,13 +4024,13 @@ index 252a07fe82..a369cf90f5 100644
  
  static void x86_cpu_init_default_topo(X86CPU *cpu)
 -- 
-2.43.5
+2.25.1
 
 
 From 54808e3fc42817ab11bc4c3ad39700d244cfb8a2 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 5 Aug 2024 10:49:47 -0400
-Subject: [PATCH 31/60] i386/tdx: implement tdx_cpu_instance_init()
+Subject: [PATCH 33/62] i386/tdx: implement tdx_cpu_instance_init()
 
 Currently, pmu is not supported for TDX by KVM.
 
@@ -3989,13 +4065,13 @@ index 591de30eed..12c1c25038 100644
 +    x86_klass->cpu_instance_init = tdx_cpu_instance_init;
  }
 -- 
-2.43.5
+2.25.1
 
 
 From 9f17299c1461c43c6455418f6fac014be6bd355d Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 2 Aug 2024 02:57:01 -0400
-Subject: [PATCH 32/60] i386/cpu: Introduce enable_cpuid_0x1f to force exposing
+Subject: [PATCH 34/62] i386/cpu: Introduce enable_cpuid_0x1f to force exposing
  CPUID 0x1f
 
 Currently, QEMU exposes CPUID 0x1f to guest only when necessary, i.e.,
@@ -4082,13 +4158,13 @@ index a76f345379..741b50181e 100644
                  break;
              }
 -- 
-2.43.5
+2.25.1
 
 
 From db2b6c70c4e2e6077e6856150fe16ae238493f4a Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 2 Jul 2024 03:10:32 -0400
-Subject: [PATCH 33/60] i386/tdx: Force exposing CPUID 0x1f
+Subject: [PATCH 35/62] i386/tdx: Force exposing CPUID 0x1f
 
 TDX uses CPUID 0x1f to configure TD guest's CPU topology. So set
 enable_cpuid_0x1f for TDs.
@@ -4115,13 +4191,13 @@ index 12c1c25038..982ed779df 100644
  
  static int tdx_validate_attributes(TdxGuest *tdx, Error **errp)
 -- 
-2.43.5
+2.25.1
 
 
 From 5aaf7634d1b4a92a4b6992584184c70713463590 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 27 Jan 2022 20:22:23 +0800
-Subject: [PATCH 34/60] i386/tdx: Set kvm_readonly_mem_enabled to false for TDX
+Subject: [PATCH 36/62] i386/tdx: Set kvm_readonly_mem_enabled to false for TDX
  VM
 
 TDX only supports readonly for shared memory but not for private memory.
@@ -4157,13 +4233,13 @@ index 982ed779df..f4d95b0a40 100644
  
      tdx_guest = tdx;
 -- 
-2.43.5
+2.25.1
 
 
 From e40adec75943f4837ec5cbd42bf4359d0c5c5153 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 13 Dec 2021 10:01:48 +0800
-Subject: [PATCH 35/60] i386/tdx: Disable SMM for TDX VMs
+Subject: [PATCH 37/62] i386/tdx: Disable SMM for TDX VMs
 
 TDX doesn't support SMM and VMM cannot emulate SMM for TDX VMs because
 VMM cannot manipulate TDX VM's memory.
@@ -4202,13 +4278,13 @@ index f4d95b0a40..10059ec8cf 100644
          r = get_tdx_capabilities(errp);
          if (r) {
 -- 
-2.43.5
+2.25.1
 
 
 From 9e8a9e53956830da6427a37bbe29943d7f52f266 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 12 Jan 2022 15:27:09 +0800
-Subject: [PATCH 36/60] i386/tdx: Disable PIC for TDX VMs
+Subject: [PATCH 38/62] i386/tdx: Disable PIC for TDX VMs
 
 Legacy PIC (8259) cannot be supported for TDX VMs since TDX module
 doesn't allow directly interrupt injection.  Using posted interrupts
@@ -4242,13 +4318,13 @@ index 10059ec8cf..dcbbe350ec 100644
          r = get_tdx_capabilities(errp);
          if (r) {
 -- 
-2.43.5
+2.25.1
 
 
 From f752b4588ed735c412a2cf322c6a95bd190b91d7 Mon Sep 17 00:00:00 2001
 From: Isaku Yamahata <isaku.yamahata@intel.com>
 Date: Wed, 9 Dec 2020 12:24:35 -0800
-Subject: [PATCH 37/60] i386/tdx: Don't synchronize guest tsc for TDs
+Subject: [PATCH 39/62] i386/tdx: Don't synchronize guest tsc for TDs
 
 TSC of TDs is not accessible and KVM doesn't allow access of
 MSR_IA32_TSC for TDs. To avoid the assert() in kvm_get_tsc, make
@@ -4276,13 +4352,13 @@ index 741b50181e..ead1d02633 100644
              run_on_cpu(cpu, do_kvm_synchronize_tsc, RUN_ON_CPU_NULL);
          }
 -- 
-2.43.5
+2.25.1
 
 
 From 3628f819d7277761ecb265eb03040c9fb3678953 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 16 Mar 2022 15:12:27 +0800
-Subject: [PATCH 38/60] i386/tdx: Only configure MSR_IA32_UCODE_REV in
+Subject: [PATCH 40/62] i386/tdx: Only configure MSR_IA32_UCODE_REV in
  kvm_init_msrs() for TDs
 
 For TDs, only MSR_IA32_UCODE_REV in kvm_init_msrs() can be configured
@@ -4356,13 +4432,13 @@ index ead1d02633..4078ba4047 100644
  }
  
 -- 
-2.43.5
+2.25.1
 
 
 From 2b67f176df4326035f480da147cf6a4ba386abb2 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 15 Jan 2025 10:31:16 -0500
-Subject: [PATCH 39/60] i386/apic: Skip kvm_apic_put() for TDX
+Subject: [PATCH 41/62] i386/apic: Skip kvm_apic_put() for TDX
 
 KVM neithers allow writing to MSR_IA32_APICBASE for TDs, nor allow for
 KVM_SET_LAPIC[*].
@@ -4407,13 +4483,13 @@ index 7575106000..a1850524a6 100644
      kvm_put_apic_state(s, &kapic);
  
 -- 
-2.43.5
+2.25.1
 
 
 From 74fd4db975749fb6c4e80bc97910d00b2c794507 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 15 Jan 2025 10:56:00 -0500
-Subject: [PATCH 40/60] cpu: Don't set vcpu_dirty when guest_state_protected
+Subject: [PATCH 42/62] cpu: Don't set vcpu_dirty when guest_state_protected
 
 QEMU calls kvm_arch_put_registers() when vcpu_dirty is true in
 kvm_vcpu_exec(). However, for confidential guest, like TDX, putting
@@ -4447,13 +4523,13 @@ index e35a9fbd68..c1fea69d58 100644
      cpu->throttle_us_per_full = 0;
  
 -- 
-2.43.5
+2.25.1
 
 
 From e34948dce6a78b86f2fd0004cf25b7903b78c37b Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 11 Oct 2024 08:44:22 -0400
-Subject: [PATCH 41/60] i386/cgs: Rename *mask_cpuid_features() to
+Subject: [PATCH 43/62] i386/cgs: Rename *mask_cpuid_features() to
  *adjust_cpuid_features()
 
 Because for TDX case, there are also fixed-1 bits that enfored by TDX
@@ -4547,13 +4623,13 @@ index 0e1dbb6959..a6c0a69725 100644
  
      object_class_property_add(oc, "policy", "uint64",
 -- 
-2.43.5
+2.25.1
 
 
 From e5ae51486c7cb67e185b79c7bcbb68190cf18e02 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 1 Nov 2024 04:06:26 -0400
-Subject: [PATCH 42/60] i386/tdx: Implement adjust_cpuid_features() for TDX
+Subject: [PATCH 44/62] i386/tdx: Implement adjust_cpuid_features() for TDX
 
 1. QEMU's support for Intel PT is borken in general, thus doesn't
    support for TDX.
@@ -4642,13 +4718,13 @@ index dcbbe350ec..9bdb9d7959 100644
 +    x86_klass->adjust_cpuid_features = tdx_adjust_cpuid_features;
  }
 -- 
-2.43.5
+2.25.1
 
 
 From 80f118ead6be272dc8e71bed914bf962e8ea02b5 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Fri, 1 Nov 2024 04:09:55 -0400
-Subject: [PATCH 43/60] i386/tdx: Apply TDX fixed0 and fixed1 information to
+Subject: [PATCH 45/62] i386/tdx: Apply TDX fixed0 and fixed1 information to
  supported CPUIDs
 
 TDX architecture forcibly sets some CPUID bits for TD guest that VMM
@@ -4867,13 +4943,13 @@ index a6c0a69725..217b19ad7b 100644
  #define SNP_CPUID_FUNCTION_UNKNOWN 0xFFFFFFFF
  
 -- 
-2.43.5
+2.25.1
 
 
 From 2d5ad8b2cd1c0b0816b370b6c77d47fdc6081276 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 18 Sep 2024 04:15:47 -0400
-Subject: [PATCH 44/60] i386/tdx: Mask off CPUID bits by unsupported TD
+Subject: [PATCH 46/62] i386/tdx: Mask off CPUID bits by unsupported TD
  Attributes
 
 For TDX, some CPUID feature bit is configured via TD attributes. Adjust
@@ -4981,13 +5057,13 @@ index 2d493a0dc1..3997a439f0 100644
      if (e) {
          fixed0 = cpuid_entry_get_reg(e, reg);
 -- 
-2.43.5
+2.25.1
 
 
 From 8e00ff640b5c30cee1401efbf1665599d538dbfb Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 3 Sep 2024 22:46:42 -0400
-Subject: [PATCH 45/60] i386/cpu: Move CPUID_XSTATE_XSS_MASK to header file and
+Subject: [PATCH 47/62] i386/cpu: Move CPUID_XSTATE_XSS_MASK to header file and
  introduce CPUID_XSTATE_MASK
 
 They will be used by TDX.
@@ -5029,13 +5105,13 @@ index 4890424c3a..a4c0531262 100644
  typedef enum FeatureWord {
      FEAT_1_EDX,         /* CPUID[1].EDX */
 -- 
-2.43.5
+2.25.1
 
 
 From 166dc5b84f67d28be550cbde8cc98e801e671270 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Wed, 18 Sep 2024 04:41:33 -0400
-Subject: [PATCH 46/60] i386/tdx: Mask off CPUID bits by unsupported XFAM
+Subject: [PATCH 48/62] i386/tdx: Mask off CPUID bits by unsupported XFAM
 
 Mask off the CPUID bits as unsupported if its matched XFAM bit is
 not supported. Otherwise, it might fail the check in setup_td_xfam() as
@@ -5111,13 +5187,13 @@ index 3997a439f0..b46e581bb4 100644
      e = cpuid_find_entry(&tdx_fixed0_bits.cpuid, feature, index);
      if (e) {
 -- 
-2.43.5
+2.25.1
 
 
 From 5f4035c6db3d267c51c5f96cdb42f648a6b2f87d Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 17 Dec 2024 03:00:17 -0500
-Subject: [PATCH 47/60] i386/tdx: Mark the configurable bit not reported by KVM
+Subject: [PATCH 49/62] i386/tdx: Mark the configurable bit not reported by KVM
  as unsupported
 
 There is no interface in KVM to report the support bits of TD guest.
@@ -5225,13 +5301,13 @@ index b46e581bb4..2b9a470209 100644
      if (e) {
          fixed0 = cpuid_entry_get_reg(e, reg);
 -- 
-2.43.5
+2.25.1
 
 
 From a6832175ad16f5dd64ec32545ff04da50eb10b2b Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Thu, 15 Aug 2024 09:51:35 -0400
-Subject: [PATCH 48/60] i386/cgs: Introduce
+Subject: [PATCH 50/62] i386/cgs: Introduce
  x86_confidential_guest_check_features()
 
 To do cgs specific feature checking. Note the feature checking in
@@ -5293,13 +5369,13 @@ index 17d7bf6ae9..27b4a069d1 100644
  
      cpuid_i = 0;
 -- 
-2.43.5
+2.25.1
 
 
 From 90cc5a480d4363eab9e8a258507511a51f215888 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 16 Jul 2024 03:13:31 -0400
-Subject: [PATCH 49/60] i386/tdx: Fetch and validate CPUID of TD guest
+Subject: [PATCH 51/62] i386/tdx: Fetch and validate CPUID of TD guest
 
 Use KVM_TDX_GET_CPUID to get the CPUIDs that are managed and enfored
 by TDX module for TD guest. Check QEMU's configuration against the
@@ -5513,13 +5589,13 @@ index 2b9a470209..f6a4f3322e 100644
 +    x86_klass->check_features = tdx_check_features;
  }
 -- 
-2.43.5
+2.25.1
 
 
 From 76cde3ac46dff9868c385b23feda22d5a1b638ff Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 27 Aug 2024 02:01:24 -0400
-Subject: [PATCH 50/60] i386/tdx: Don't treat SYSCALL as unavailable
+Subject: [PATCH 52/62] i386/tdx: Don't treat SYSCALL as unavailable
 
 Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
 ---
@@ -5554,13 +5630,13 @@ index f6a4f3322e..58ea6a4d31 100644
          unavailable = requested & ~actual;
          mark_unavailable_features(cpu, w, unavailable, unav_prefix);
 -- 
-2.43.5
+2.25.1
 
 
 From df59432ef655b120e8d5129ac70d7587ff84fb99 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 27 Aug 2024 02:16:07 -0400
-Subject: [PATCH 51/60] i386/tdx: Make invtsc default on
+Subject: [PATCH 53/62] i386/tdx: Make invtsc default on
 
 Because it's fixed1 bit that enforced by TDX module.
 
@@ -5584,13 +5660,13 @@ index 58ea6a4d31..bb75eb06da 100644
  }
  
 -- 
-2.43.5
+2.25.1
 
 
 From 665a94084dbc39d520e0babedbdcf8920853d3b0 Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Mon, 25 Nov 2024 21:36:13 -0500
-Subject: [PATCH 52/60] i386/tdx: Validate phys_bits against host value
+Subject: [PATCH 54/62] i386/tdx: Validate phys_bits against host value
 
 For TDX guest, the phys_bits is not configurable and can only be
 host/native value.
@@ -5656,13 +5732,13 @@ index bb75eb06da..c906a76c4c 100644
  }
  
 -- 
-2.43.5
+2.25.1
 
 
 From 359b65e69aa996d3a624c9c0a48162f6e6e2300c Mon Sep 17 00:00:00 2001
 From: Xiaoyao Li <xiaoyao.li@intel.com>
 Date: Tue, 1 Mar 2022 11:14:09 +0800
-Subject: [PATCH 53/60] docs: Add TDX documentation
+Subject: [PATCH 55/62] docs: Add TDX documentation
 
 Add docs/system/i386/tdx.rst for TDX support, and add tdx in
 confidential-guest-support.rst
@@ -5877,24 +5953,36 @@ index ab7af1a75d..43b09c79d6 100644
  OS requirements
  ~~~~~~~~~~~~~~~
 -- 
-2.43.5
+2.25.1
 
 
-From 4dd18301df09ab6fb0e318208d972efe1e3ea2e5 Mon Sep 17 00:00:00 2001
+From 77efeae9eb823fad3b16f962d2ba7b18760e6221 Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
 Date: Mon, 9 Dec 2024 17:31:01 +0800
-Subject: [PATCH 54/60] memory: Export a helper to get intersection of a
+Subject: [PATCH 56/62] memory: Export a helper to get intersection of a
  MemoryRegionSection with a given range
 
 Rename the helper to memory_region_section_intersect_range() to make it
-more generic.
+more generic. Meanwhile, define the @end as Int128 and replace the
+related operations with Int128_* format since the helper is exported as
+a wider API.
 
+Suggested-by: Alexey Kardashevskiy <aik@amd.com>
+Reviewed-by: David Hildenbrand <david@redhat.com>
 Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
 ---
+Changes in v3:
+    - No change
+
+Changes in v2:
+    - Make memory_region_section_intersect_range() an inline function.
+    - Add Reviewed-by from David
+    - Define the @end as Int128 and use the related Int128_* ops as a wilder
+      API (Alexey)
+---
  hw/virtio/virtio-mem.c | 32 +++++---------------------------
- include/exec/memory.h  | 13 +++++++++++++
- system/memory.c        | 17 +++++++++++++++++
- 3 files changed, 35 insertions(+), 27 deletions(-)
+ include/exec/memory.h  | 27 +++++++++++++++++++++++++++
+ 2 files changed, 32 insertions(+), 27 deletions(-)
 
 diff --git a/hw/virtio/virtio-mem.c b/hw/virtio/virtio-mem.c
 index b1a003736b..21f16e4912 100644
@@ -5975,10 +6063,10 @@ index b1a003736b..21f16e4912 100644
              }
              rdl2->notify_discard(rdl2, &tmp);
 diff --git a/include/exec/memory.h b/include/exec/memory.h
-index 3ee1901b52..e8e2fb75d0 100644
+index 3ee1901b52..3bebc43d59 100644
 --- a/include/exec/memory.h
 +++ b/include/exec/memory.h
-@@ -1202,6 +1202,19 @@ MemoryRegionSection *memory_region_section_new_copy(MemoryRegionSection *s);
+@@ -1202,6 +1202,33 @@ MemoryRegionSection *memory_region_section_new_copy(MemoryRegionSection *s);
   */
  void memory_region_section_free_copy(MemoryRegionSection *s);
  
@@ -5992,113 +6080,487 @@ index 3ee1901b52..e8e2fb75d0 100644
 + *
 + * Returns false if the intersection is empty, otherwise returns true.
 + */
-+bool memory_region_section_intersect_range(MemoryRegionSection *s,
-+                                           uint64_t offset, uint64_t size);
-+
- /**
-  * memory_region_init: Initialize a memory region
-  *
-diff --git a/system/memory.c b/system/memory.c
-index b17b5538ff..d6d55d3a93 100644
---- a/system/memory.c
-+++ b/system/memory.c
-@@ -2898,6 +2898,23 @@ void memory_region_section_free_copy(MemoryRegionSection *s)
-     g_free(s);
- }
- 
-+bool memory_region_section_intersect_range(MemoryRegionSection *s,
-+                                           uint64_t offset, uint64_t size)
++static inline bool memory_region_section_intersect_range(MemoryRegionSection *s,
++                                                         uint64_t offset, uint64_t size)
 +{
 +    uint64_t start = MAX(s->offset_within_region, offset);
-+    uint64_t end = MIN(s->offset_within_region + int128_get64(s->size),
-+                       offset + size);
++    Int128 end = int128_min(int128_add(int128_make64(s->offset_within_region), s->size),
++                            int128_add(int128_make64(offset), int128_make64(size)));
 +
-+    if (end <= start) {
++    if (int128_le(end, int128_make64(start))) {
 +        return false;
 +    }
 +
 +    s->offset_within_address_space += start - s->offset_within_region;
 +    s->offset_within_region = start;
-+    s->size = int128_make64(end - start);
++    s->size = int128_sub(end, int128_make64(start));
 +    return true;
 +}
 +
- bool memory_region_present(MemoryRegion *container, hwaddr addr)
- {
-     MemoryRegion *mr;
+ /**
+  * memory_region_init: Initialize a memory region
+  *
 -- 
-2.43.5
+2.25.1
 
 
-From c4eeb46bccd79483ff34362cb0428b16de589775 Mon Sep 17 00:00:00 2001
+From f5e389ac781c2491640699d0652176ad88f9d62d Mon Sep 17 00:00:00 2001
+From: Chenyi Qiang <chenyi.qiang@intel.com>
+Date: Tue, 11 Feb 2025 11:39:01 +0800
+Subject: [PATCH 57/62] memory: Change memory_region_set_ram_discard_manager()
+ to return the result
+
+Modify memory_region_set_ram_discard_manager() to return false if a
+RamDiscardManager is already set in the MemoryRegion. The caller must
+handle this failure, such as having virtio-mem undo its actions and fail
+the realize() process. Opportunistically move the call earlier to avoid
+complex error handling.
+
+This change is beneficial when introducing a new RamDiscardManager
+instance besides virtio-mem. After
+ram_block_coordinated_discard_require(true) unlocks all
+RamDiscardManager instances, only one instance is allowed to be set for
+a MemoryRegion at present.
+
+Suggested-by: David Hildenbrand <david@redhat.com>
+Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
+---
+Changes in v3:
+    - Move set_ram_discard_manager() up to avoid a g_free()
+    - Clean up set_ram_discard_manager() definition
+
+Changes in v2:
+    - newly added.
+---
+ hw/virtio/virtio-mem.c | 29 ++++++++++++++++-------------
+ include/exec/memory.h  |  6 +++---
+ system/memory.c        | 10 +++++++---
+ 3 files changed, 26 insertions(+), 19 deletions(-)
+
+diff --git a/hw/virtio/virtio-mem.c b/hw/virtio/virtio-mem.c
+index 21f16e4912..d0d3a0240f 100644
+--- a/hw/virtio/virtio-mem.c
++++ b/hw/virtio/virtio-mem.c
+@@ -1049,6 +1049,17 @@ static void virtio_mem_device_realize(DeviceState *dev, Error **errp)
+         return;
+     }
+ 
++    /*
++     * Set ourselves as RamDiscardManager before the plug handler maps the
++     * memory region and exposes it via an address space.
++     */
++    if (memory_region_set_ram_discard_manager(&vmem->memdev->mr,
++                                              RAM_DISCARD_MANAGER(vmem))) {
++        error_setg(errp, "Failed to set RamDiscardManager");
++        ram_block_coordinated_discard_require(false);
++        return;
++    }
++
+     /*
+      * We don't know at this point whether shared RAM is migrated using
+      * QEMU or migrated using the file content. "x-ignore-shared" will be
+@@ -1124,13 +1135,6 @@ static void virtio_mem_device_realize(DeviceState *dev, Error **errp)
+     vmem->system_reset = VIRTIO_MEM_SYSTEM_RESET(obj);
+     vmem->system_reset->vmem = vmem;
+     qemu_register_resettable(obj);
+-
+-    /*
+-     * Set ourselves as RamDiscardManager before the plug handler maps the
+-     * memory region and exposes it via an address space.
+-     */
+-    memory_region_set_ram_discard_manager(&vmem->memdev->mr,
+-                                          RAM_DISCARD_MANAGER(vmem));
+ }
+ 
+ static void virtio_mem_device_unrealize(DeviceState *dev)
+@@ -1138,12 +1142,6 @@ static void virtio_mem_device_unrealize(DeviceState *dev)
+     VirtIODevice *vdev = VIRTIO_DEVICE(dev);
+     VirtIOMEM *vmem = VIRTIO_MEM(dev);
+ 
+-    /*
+-     * The unplug handler unmapped the memory region, it cannot be
+-     * found via an address space anymore. Unset ourselves.
+-     */
+-    memory_region_set_ram_discard_manager(&vmem->memdev->mr, NULL);
+-
+     qemu_unregister_resettable(OBJECT(vmem->system_reset));
+     object_unref(OBJECT(vmem->system_reset));
+ 
+@@ -1156,6 +1154,11 @@ static void virtio_mem_device_unrealize(DeviceState *dev)
+     virtio_del_queue(vdev, 0);
+     virtio_cleanup(vdev);
+     g_free(vmem->bitmap);
++    /*
++     * The unplug handler unmapped the memory region, it cannot be
++     * found via an address space anymore. Unset ourselves.
++     */
++    memory_region_set_ram_discard_manager(&vmem->memdev->mr, NULL);
+     ram_block_coordinated_discard_require(false);
+ }
+ 
+diff --git a/include/exec/memory.h b/include/exec/memory.h
+index 3bebc43d59..390477b588 100644
+--- a/include/exec/memory.h
++++ b/include/exec/memory.h
+@@ -2487,13 +2487,13 @@ static inline bool memory_region_has_ram_discard_manager(MemoryRegion *mr)
+  *
+  * This function must not be called for a mapped #MemoryRegion, a #MemoryRegion
+  * that does not cover RAM, or a #MemoryRegion that already has a
+- * #RamDiscardManager assigned.
++ * #RamDiscardManager assigned. Return 0 if the rdm is set successfully.
+  *
+  * @mr: the #MemoryRegion
+  * @rdm: #RamDiscardManager to set
+  */
+-void memory_region_set_ram_discard_manager(MemoryRegion *mr,
+-                                           RamDiscardManager *rdm);
++int memory_region_set_ram_discard_manager(MemoryRegion *mr,
++                                          RamDiscardManager *rdm);
+ 
+ /**
+  * memory_region_find: translate an address/size relative to a
+diff --git a/system/memory.c b/system/memory.c
+index b17b5538ff..62d6b410f0 100644
+--- a/system/memory.c
++++ b/system/memory.c
+@@ -2115,12 +2115,16 @@ RamDiscardManager *memory_region_get_ram_discard_manager(MemoryRegion *mr)
+     return mr->rdm;
+ }
+ 
+-void memory_region_set_ram_discard_manager(MemoryRegion *mr,
+-                                           RamDiscardManager *rdm)
++int memory_region_set_ram_discard_manager(MemoryRegion *mr,
++                                          RamDiscardManager *rdm)
+ {
+     g_assert(memory_region_is_ram(mr));
+-    g_assert(!rdm || !mr->rdm);
++    if (mr->rdm && rdm) {
++        return -EBUSY;
++    }
++
+     mr->rdm = rdm;
++    return 0;
+ }
+ 
+ uint64_t ram_discard_manager_get_min_granularity(const RamDiscardManager *rdm,
+-- 
+2.25.1
+
+
+From 98c12a55e652b7128e64ea53b718e51fd68fd8b3 Mon Sep 17 00:00:00 2001
+From: Chenyi Qiang <chenyi.qiang@intel.com>
+Date: Thu, 6 Mar 2025 17:12:07 +0800
+Subject: [PATCH 58/62] memory: Unify the definiton of ReplayRamPopulate() and
+ ReplayRamDiscard()
+
+Update ReplayRamDiscard() function to return the result and unify the
+ReplayRamPopulate() and ReplayRamDiscard() to ReplayRamStateChange() at
+the same time due to their identical definitions. This unification
+simplifies related structures, such as VirtIOMEMReplayData, which makes
+it more cleaner and maintainable. It also paves the way for future
+extension when introducing new ReplayRamDiscard() functions to return
+the results.
+
+Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
+---
+Changes in v3:
+    - Newly added.
+---
+ hw/virtio/virtio-mem.c | 20 ++++++++++----------
+ include/exec/memory.h  | 31 ++++++++++++++++---------------
+ migration/ram.c        |  5 +++--
+ system/memory.c        | 12 ++++++------
+ 4 files changed, 35 insertions(+), 33 deletions(-)
+
+diff --git a/hw/virtio/virtio-mem.c b/hw/virtio/virtio-mem.c
+index d0d3a0240f..816ae8abdd 100644
+--- a/hw/virtio/virtio-mem.c
++++ b/hw/virtio/virtio-mem.c
+@@ -1733,7 +1733,7 @@ static bool virtio_mem_rdm_is_populated(const RamDiscardManager *rdm,
+ }
+ 
+ struct VirtIOMEMReplayData {
+-    void *fn;
++    ReplayRamStateChange fn;
+     void *opaque;
+ };
+ 
+@@ -1741,12 +1741,12 @@ static int virtio_mem_rdm_replay_populated_cb(MemoryRegionSection *s, void *arg)
+ {
+     struct VirtIOMEMReplayData *data = arg;
+ 
+-    return ((ReplayRamPopulate)data->fn)(s, data->opaque);
++    return data->fn(s, data->opaque);
+ }
+ 
+ static int virtio_mem_rdm_replay_populated(const RamDiscardManager *rdm,
+                                            MemoryRegionSection *s,
+-                                           ReplayRamPopulate replay_fn,
++                                           ReplayRamStateChange replay_fn,
+                                            void *opaque)
+ {
+     const VirtIOMEM *vmem = VIRTIO_MEM(rdm);
+@@ -1765,14 +1765,14 @@ static int virtio_mem_rdm_replay_discarded_cb(MemoryRegionSection *s,
+ {
+     struct VirtIOMEMReplayData *data = arg;
+ 
+-    ((ReplayRamDiscard)data->fn)(s, data->opaque);
++    data->fn(s, data->opaque);
+     return 0;
+ }
+ 
+-static void virtio_mem_rdm_replay_discarded(const RamDiscardManager *rdm,
+-                                            MemoryRegionSection *s,
+-                                            ReplayRamDiscard replay_fn,
+-                                            void *opaque)
++static int virtio_mem_rdm_replay_discarded(const RamDiscardManager *rdm,
++                                           MemoryRegionSection *s,
++                                           ReplayRamStateChange replay_fn,
++                                           void *opaque)
+ {
+     const VirtIOMEM *vmem = VIRTIO_MEM(rdm);
+     struct VirtIOMEMReplayData data = {
+@@ -1781,8 +1781,8 @@ static void virtio_mem_rdm_replay_discarded(const RamDiscardManager *rdm,
+     };
+ 
+     g_assert(s->mr == &vmem->memdev->mr);
+-    virtio_mem_for_each_unplugged_section(vmem, s, &data,
+-                                          virtio_mem_rdm_replay_discarded_cb);
++    return virtio_mem_for_each_unplugged_section(vmem, s, &data,
++                                                 virtio_mem_rdm_replay_discarded_cb);
+ }
+ 
+ static void virtio_mem_rdm_register_listener(RamDiscardManager *rdm,
+diff --git a/include/exec/memory.h b/include/exec/memory.h
+index 390477b588..aa67d84329 100644
+--- a/include/exec/memory.h
++++ b/include/exec/memory.h
+@@ -566,8 +566,7 @@ static inline void ram_discard_listener_init(RamDiscardListener *rdl,
+     rdl->double_discard_supported = double_discard_supported;
+ }
+ 
+-typedef int (*ReplayRamPopulate)(MemoryRegionSection *section, void *opaque);
+-typedef void (*ReplayRamDiscard)(MemoryRegionSection *section, void *opaque);
++typedef int (*ReplayRamStateChange)(MemoryRegionSection *section, void *opaque);
+ 
+ /*
+  * RamDiscardManagerClass:
+@@ -641,36 +640,38 @@ struct RamDiscardManagerClass {
+     /**
+      * @replay_populated:
+      *
+-     * Call the #ReplayRamPopulate callback for all populated parts within the
++     * Call the #ReplayRamStateChange callback for all populated parts within the
+      * #MemoryRegionSection via the #RamDiscardManager.
+      *
+      * In case any call fails, no further calls are made.
+      *
+      * @rdm: the #RamDiscardManager
+      * @section: the #MemoryRegionSection
+-     * @replay_fn: the #ReplayRamPopulate callback
++     * @replay_fn: the #ReplayRamStateChange callback
+      * @opaque: pointer to forward to the callback
+      *
+      * Returns 0 on success, or a negative error if any notification failed.
+      */
+     int (*replay_populated)(const RamDiscardManager *rdm,
+                             MemoryRegionSection *section,
+-                            ReplayRamPopulate replay_fn, void *opaque);
++                            ReplayRamStateChange replay_fn, void *opaque);
+ 
+     /**
+      * @replay_discarded:
+      *
+-     * Call the #ReplayRamDiscard callback for all discarded parts within the
++     * Call the #ReplayRamStateChange callback for all discarded parts within the
+      * #MemoryRegionSection via the #RamDiscardManager.
+      *
+      * @rdm: the #RamDiscardManager
+      * @section: the #MemoryRegionSection
+-     * @replay_fn: the #ReplayRamDiscard callback
++     * @replay_fn: the #ReplayRamStateChange callback
+      * @opaque: pointer to forward to the callback
++     *
++     * Returns 0 on success, or a negative error if any notification failed.
+      */
+-    void (*replay_discarded)(const RamDiscardManager *rdm,
+-                             MemoryRegionSection *section,
+-                             ReplayRamDiscard replay_fn, void *opaque);
++    int (*replay_discarded)(const RamDiscardManager *rdm,
++                            MemoryRegionSection *section,
++                            ReplayRamStateChange replay_fn, void *opaque);
+ 
+     /**
+      * @register_listener:
+@@ -713,13 +714,13 @@ bool ram_discard_manager_is_populated(const RamDiscardManager *rdm,
+ 
+ int ram_discard_manager_replay_populated(const RamDiscardManager *rdm,
+                                          MemoryRegionSection *section,
+-                                         ReplayRamPopulate replay_fn,
++                                         ReplayRamStateChange replay_fn,
+                                          void *opaque);
+ 
+-void ram_discard_manager_replay_discarded(const RamDiscardManager *rdm,
+-                                          MemoryRegionSection *section,
+-                                          ReplayRamDiscard replay_fn,
+-                                          void *opaque);
++int ram_discard_manager_replay_discarded(const RamDiscardManager *rdm,
++                                         MemoryRegionSection *section,
++                                         ReplayRamStateChange replay_fn,
++                                         void *opaque);
+ 
+ void ram_discard_manager_register_listener(RamDiscardManager *rdm,
+                                            RamDiscardListener *rdl,
+diff --git a/migration/ram.c b/migration/ram.c
+index ce28328141..053730367b 100644
+--- a/migration/ram.c
++++ b/migration/ram.c
+@@ -816,8 +816,8 @@ static inline bool migration_bitmap_clear_dirty(RAMState *rs,
+     return ret;
+ }
+ 
+-static void dirty_bitmap_clear_section(MemoryRegionSection *section,
+-                                       void *opaque)
++static int dirty_bitmap_clear_section(MemoryRegionSection *section,
++                                      void *opaque)
+ {
+     const hwaddr offset = section->offset_within_region;
+     const hwaddr size = int128_get64(section->size);
+@@ -836,6 +836,7 @@ static void dirty_bitmap_clear_section(MemoryRegionSection *section,
+     }
+     *cleared_bits += bitmap_count_one_with_offset(rb->bmap, start, npages);
+     bitmap_clear(rb->bmap, start, npages);
++    return 0;
+ }
+ 
+ /*
+diff --git a/system/memory.c b/system/memory.c
+index 62d6b410f0..8622d17133 100644
+--- a/system/memory.c
++++ b/system/memory.c
+@@ -2147,7 +2147,7 @@ bool ram_discard_manager_is_populated(const RamDiscardManager *rdm,
+ 
+ int ram_discard_manager_replay_populated(const RamDiscardManager *rdm,
+                                          MemoryRegionSection *section,
+-                                         ReplayRamPopulate replay_fn,
++                                         ReplayRamStateChange replay_fn,
+                                          void *opaque)
+ {
+     RamDiscardManagerClass *rdmc = RAM_DISCARD_MANAGER_GET_CLASS(rdm);
+@@ -2156,15 +2156,15 @@ int ram_discard_manager_replay_populated(const RamDiscardManager *rdm,
+     return rdmc->replay_populated(rdm, section, replay_fn, opaque);
+ }
+ 
+-void ram_discard_manager_replay_discarded(const RamDiscardManager *rdm,
+-                                          MemoryRegionSection *section,
+-                                          ReplayRamDiscard replay_fn,
+-                                          void *opaque)
++int ram_discard_manager_replay_discarded(const RamDiscardManager *rdm,
++                                         MemoryRegionSection *section,
++                                         ReplayRamStateChange replay_fn,
++                                         void *opaque)
+ {
+     RamDiscardManagerClass *rdmc = RAM_DISCARD_MANAGER_GET_CLASS(rdm);
+ 
+     g_assert(rdmc->replay_discarded);
+-    rdmc->replay_discarded(rdm, section, replay_fn, opaque);
++    return rdmc->replay_discarded(rdm, section, replay_fn, opaque);
+ }
+ 
+ void ram_discard_manager_register_listener(RamDiscardManager *rdm,
+-- 
+2.25.1
+
+
+From 3fd276e1f3340caeb4ec61381815162fa90f0a0b Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
 Date: Wed, 12 Jun 2024 09:22:16 +0000
-Subject: [PATCH 55/60] guest_memfd: Introduce an object to manage the
- guest-memfd with RamDiscardManager
+Subject: [PATCH 59/62] memory-attribute-manager: Introduce
+ MemoryAttributeManager to manage RAMBLock with guest_memfd
 
 As the commit 852f0048f3 ("RAMBlock: make guest_memfd require
-uncoordinated discard") highlighted, some subsystems like VFIO might
+uncoordinated discard") highlighted, some subsystems like VFIO may
 disable ram block discard. However, guest_memfd relies on the discard
 operation to perform page conversion between private and shared memory.
 This can lead to stale IOMMU mapping issue when assigning a hardware
-device to a confidential VM via shared memory (unprotected memory
-pages). Blocking shared page discard can solve this problem, but it
-could cause guests to consume twice the memory with VFIO, which is not
-acceptable in some cases. An alternative solution is to convey other
-systems like VFIO to refresh its outdated IOMMU mappings.
+device to a confidential VM via shared memory. To address this, it is
+crucial to ensure systems like VFIO refresh its IOMMU mappings.
 
 RamDiscardManager is an existing concept (used by virtio-mem) to adjust
 VFIO mappings in relation to VM page assignment. Effectively page
 conversion is similar to hot-removing a page in one mode and adding it
-back in the other, so the similar work that needs to happen in response
-to virtio-mem changes needs to happen for page conversion events.
-Introduce the RamDiscardManager to guest_memfd to achieve it.
+back in the other. Therefore, similar actions are required for page
+conversion events. Introduce the RamDiscardManager to guest_memfd to
+facilitate this process.
 
-However, guest_memfd is not an object so it cannot directly implement
-the RamDiscardManager interface.
+Since guest_memfd is not an object, it cannot directly implement the
+RamDiscardManager interface. One potential attempt is to implement it in
+HostMemoryBackend. This is not appropriate because guest_memfd is per
+RAMBlock. Some RAMBlocks have a memory backend but others do not. In
+particular, the ones like virtual BIOS calling
+memory_region_init_ram_guest_memfd() do not.
 
-One solution is to implement the interface in HostMemoryBackend. Any
-guest_memfd-backed host memory backend can register itself in the target
-MemoryRegion. However, this solution doesn't cover the scenario where a
-guest_memfd MemoryRegion doesn't belong to the HostMemoryBackend, e.g.
-the virtual BIOS MemoryRegion.
+To manage the RAMBlocks with guest_memfd, define a new object named
+MemoryAttributeManager to implement the RamDiscardManager interface. The
+object stores guest_memfd information such as shared_bitmap, and handles
+page conversion notification. Using the name of MemoryAttributeManager is
+aimed to make it more generic. The term "Memory" emcompasses not only RAM
+but also private MMIO in TEE I/O, which might rely on this
+object/interface to handle page conversion events in the future. The
+term "Attribute" allows for the management of various attributes beyond
+shared and private. For instance, it could support scenarios where
+discard vs. populated and shared vs. private states co-exists, such as
+supporting virtio-mem or something similar in the future.
 
-Thus, choose the second option, i.e. define an object type named
-guest_memfd_manager with RamDiscardManager interface. Upon creation of
-guest_memfd, a new guest_memfd_manager object can be instantiated and
-registered to the managed guest_memfd MemoryRegion to handle the page
-conversion events.
-
-In the context of guest_memfd, the discarded state signifies that the
-page is private, while the populated state indicated that the page is
-shared. The state of the memory is tracked at the granularity of the
-host page size (i.e. block_size), as the minimum conversion size can be
-one page per request.
-
-In addition, VFIO expects the DMA mapping for a specific iova to be
-mapped and unmapped with the same granularity. However, the confidential
-VMs may do partial conversion, e.g. conversion happens on a small region
-within a large region. To prevent such invalid cases and before any
-potential optimization comes out, all operations are performed with 4K
-granularity.
+In the current context, MemoryAttributeManager signifies discarded state
+as private and populated state as shared. Memory state is tracked at the
+host page size granularity, as the minimum memory conversion size can be one
+page per request. Additionally, VFIO expects the DMA mapping for a
+specific iova to be mapped and unmapped with the same granularity.
+Confidential VMs may perform  partial conversions, e.g. conversion
+happens on a small region within a large region. To prevent such invalid
+cases and until cut_mapping operation support is introduced, all
+operations are performed with 4K granularity.
 
 Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
 ---
- include/system/guest-memfd-manager.h |  46 +++++
- system/guest-memfd-manager.c         | 250 +++++++++++++++++++++++++++
- system/meson.build                   |   1 +
- 3 files changed, 297 insertions(+)
- create mode 100644 include/system/guest-memfd-manager.h
- create mode 100644 system/guest-memfd-manager.c
+Changes in v3:
+    - Some rename (bitmap_size->shared_bitmap_size,
+      first_one/zero_bit->first_bit, etc.)
+    - Change shared_bitmap_size from uint32_t to unsigned
+    - Return mgr->mr->ram_block->page_size in get_block_size()
+    - Move set_ram_discard_manager() up to avoid a g_free() in failure
+      case.
+    - Add const for the memory_attribute_manager_get_block_size()
+    - Unify the ReplayRamPopulate and ReplayRamDiscard and related
+      callback.
 
-diff --git a/include/system/guest-memfd-manager.h b/include/system/guest-memfd-manager.h
+Changes in v2:
+    - Rename the object name to MemoryAttributeManager
+    - Rename the bitmap to shared_bitmap to make it more clear.
+    - Remove block_size field and get it from a helper. In future, we
+      can get the page_size from RAMBlock if necessary.
+    - Remove the unncessary "struct" before GuestMemfdReplayData
+    - Remove the unncessary g_free() for the bitmap
+    - Add some error report when the callback failure for
+      populated/discarded section.
+    - Move the realize()/unrealize() definition to this patch.
+---
+ include/system/memory-attribute-manager.h |  42 ++++
+ system/memory-attribute-manager.c         | 283 ++++++++++++++++++++++
+ system/meson.build                        |   1 +
+ 3 files changed, 326 insertions(+)
+ create mode 100644 include/system/memory-attribute-manager.h
+ create mode 100644 system/memory-attribute-manager.c
+
+diff --git a/include/system/memory-attribute-manager.h b/include/system/memory-attribute-manager.h
 new file mode 100644
-index 0000000000..6fbeb10ece
+index 0000000000..23375a14b8
 --- /dev/null
-+++ b/include/system/guest-memfd-manager.h
-@@ -0,0 +1,46 @@
++++ b/include/system/memory-attribute-manager.h
+@@ -0,0 +1,42 @@
 +/*
-+ * QEMU guest memfd manager
++ * QEMU memory attribute manager
 + *
 + * Copyright Intel
 + *
@@ -6110,47 +6572,43 @@ index 0000000000..6fbeb10ece
 + *
 + */
 +
-+#ifndef SYSEMU_GUEST_MEMFD_MANAGER_H
-+#define SYSEMU_GUEST_MEMFD_MANAGER_H
++#ifndef SYSTEM_MEMORY_ATTRIBUTE_MANAGER_H
++#define SYSTEM_MEMORY_ATTRIBUTE_MANAGER_H
 +
 +#include "system/hostmem.h"
 +
-+#define TYPE_GUEST_MEMFD_MANAGER "guest-memfd-manager"
++#define TYPE_MEMORY_ATTRIBUTE_MANAGER "memory-attribute-manager"
 +
-+OBJECT_DECLARE_TYPE(GuestMemfdManager, GuestMemfdManagerClass, GUEST_MEMFD_MANAGER)
++OBJECT_DECLARE_TYPE(MemoryAttributeManager, MemoryAttributeManagerClass, MEMORY_ATTRIBUTE_MANAGER)
 +
-+struct GuestMemfdManager {
++struct MemoryAttributeManager {
 +    Object parent;
 +
-+    /* Managed memory region. */
 +    MemoryRegion *mr;
 +
-+    /*
-+     * 1-setting of the bit represents the memory is populated (shared).
-+     */
-+    int32_t bitmap_size;
-+    unsigned long *bitmap;
++    /* 1-setting of the bit represents the memory is populated (shared) */
++    unsigned shared_bitmap_size;
++    unsigned long *shared_bitmap;
 +
-+    /* block size and alignment */
-+    uint64_t block_size;
-+
-+    /* listeners to notify on populate/discard activity. */
 +    QLIST_HEAD(, RamDiscardListener) rdl_list;
 +};
 +
-+struct GuestMemfdManagerClass {
++struct MemoryAttributeManagerClass {
 +    ObjectClass parent_class;
 +};
 +
++int memory_attribute_manager_realize(MemoryAttributeManager *mgr, MemoryRegion *mr);
++void memory_attribute_manager_unrealize(MemoryAttributeManager *mgr);
++
 +#endif
-diff --git a/system/guest-memfd-manager.c b/system/guest-memfd-manager.c
+diff --git a/system/memory-attribute-manager.c b/system/memory-attribute-manager.c
 new file mode 100644
-index 0000000000..3c370ba6d4
+index 0000000000..7c3789cf49
 --- /dev/null
-+++ b/system/guest-memfd-manager.c
-@@ -0,0 +1,250 @@
++++ b/system/memory-attribute-manager.c
+@@ -0,0 +1,283 @@
 +/*
-+ * QEMU guest memfd manager
++ * QEMU memory attribute manager
 + *
 + * Copyright Intel
 + *
@@ -6164,37 +6622,51 @@ index 0000000000..3c370ba6d4
 +
 +#include "qemu/osdep.h"
 +#include "qemu/error-report.h"
-+#include "system/guest-memfd-manager.h"
++#include "exec/ramblock.h"
++#include "system/memory-attribute-manager.h"
 +
-+OBJECT_DEFINE_TYPE_WITH_INTERFACES(GuestMemfdManager,
-+                                   guest_memfd_manager,
-+                                   GUEST_MEMFD_MANAGER,
++OBJECT_DEFINE_TYPE_WITH_INTERFACES(MemoryAttributeManager,
++                                   memory_attribute_manager,
++                                   MEMORY_ATTRIBUTE_MANAGER,
 +                                   OBJECT,
 +                                   { TYPE_RAM_DISCARD_MANAGER },
 +                                   { })
 +
-+static bool guest_memfd_rdm_is_populated(const RamDiscardManager *rdm,
-+                                         const MemoryRegionSection *section)
++static size_t memory_attribute_manager_get_block_size(const MemoryAttributeManager *mgr)
 +{
-+    const GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(rdm);
-+    uint64_t first_bit = section->offset_within_region / gmm->block_size;
-+    uint64_t last_bit = first_bit + int128_get64(section->size) / gmm->block_size - 1;
++    /*
++     * Because page conversion could be manipulated in the size of at least 4K or 4K aligned,
++     * Use the host page size as the granularity to track the memory attribute.
++     */
++    g_assert(mgr && mgr->mr && mgr->mr->ram_block);
++    g_assert(mgr->mr->ram_block->page_size == qemu_real_host_page_size());
++    return mgr->mr->ram_block->page_size;
++}
++
++
++static bool memory_attribute_rdm_is_populated(const RamDiscardManager *rdm,
++                                              const MemoryRegionSection *section)
++{
++    const MemoryAttributeManager *mgr = MEMORY_ATTRIBUTE_MANAGER(rdm);
++    const int block_size = memory_attribute_manager_get_block_size(mgr);
++    uint64_t first_bit = section->offset_within_region / block_size;
++    uint64_t last_bit = first_bit + int128_get64(section->size) / block_size - 1;
 +    unsigned long first_discard_bit;
 +
-+    first_discard_bit = find_next_zero_bit(gmm->bitmap, last_bit + 1, first_bit);
++    first_discard_bit = find_next_zero_bit(mgr->shared_bitmap, last_bit + 1, first_bit);
 +    return first_discard_bit > last_bit;
 +}
 +
-+typedef int (*guest_memfd_section_cb)(MemoryRegionSection *s, void *arg);
++typedef int (*memory_attribute_section_cb)(MemoryRegionSection *s, void *arg);
 +
-+static int guest_memfd_notify_populate_cb(MemoryRegionSection *section, void *arg)
++static int memory_attribute_notify_populate_cb(MemoryRegionSection *section, void *arg)
 +{
 +    RamDiscardListener *rdl = arg;
 +
 +    return rdl->notify_populate(rdl, section);
 +}
 +
-+static int guest_memfd_notify_discard_cb(MemoryRegionSection *section, void *arg)
++static int memory_attribute_notify_discard_cb(MemoryRegionSection *section, void *arg)
 +{
 +    RamDiscardListener *rdl = arg;
 +
@@ -6203,25 +6675,26 @@ index 0000000000..3c370ba6d4
 +    return 0;
 +}
 +
-+static int guest_memfd_for_each_populated_section(const GuestMemfdManager *gmm,
-+                                                  MemoryRegionSection *section,
-+                                                  void *arg,
-+                                                  guest_memfd_section_cb cb)
++static int memory_attribute_for_each_populated_section(const MemoryAttributeManager *mgr,
++                                                       MemoryRegionSection *section,
++                                                       void *arg,
++                                                       memory_attribute_section_cb cb)
 +{
-+    unsigned long first_one_bit, last_one_bit;
++    unsigned long first_bit, last_bit;
 +    uint64_t offset, size;
++    const int block_size = memory_attribute_manager_get_block_size(mgr);
 +    int ret = 0;
 +
-+    first_one_bit = section->offset_within_region / gmm->block_size;
-+    first_one_bit = find_next_bit(gmm->bitmap, gmm->bitmap_size, first_one_bit);
++    first_bit = section->offset_within_region / block_size;
++    first_bit = find_next_bit(mgr->shared_bitmap, mgr->shared_bitmap_size, first_bit);
 +
-+    while (first_one_bit < gmm->bitmap_size) {
++    while (first_bit < mgr->shared_bitmap_size) {
 +        MemoryRegionSection tmp = *section;
 +
-+        offset = first_one_bit * gmm->block_size;
-+        last_one_bit = find_next_zero_bit(gmm->bitmap, gmm->bitmap_size,
-+                                          first_one_bit + 1) - 1;
-+        size = (last_one_bit - first_one_bit + 1) * gmm->block_size;
++        offset = first_bit * block_size;
++        last_bit = find_next_zero_bit(mgr->shared_bitmap, mgr->shared_bitmap_size,
++                                      first_bit + 1) - 1;
++        size = (last_bit - first_bit + 1) * block_size;
 +
 +        if (!memory_region_section_intersect_range(&tmp, offset, size)) {
 +            break;
@@ -6229,36 +6702,39 @@ index 0000000000..3c370ba6d4
 +
 +        ret = cb(&tmp, arg);
 +        if (ret) {
++            error_report("%s: Failed to notify RAM discard listener: %s", __func__,
++                         strerror(-ret));
 +            break;
 +        }
 +
-+        first_one_bit = find_next_bit(gmm->bitmap, gmm->bitmap_size,
-+                                      last_one_bit + 2);
++        first_bit = find_next_bit(mgr->shared_bitmap, mgr->shared_bitmap_size,
++                                  last_bit + 2);
 +    }
 +
 +    return ret;
 +}
 +
-+static int guest_memfd_for_each_discarded_section(const GuestMemfdManager *gmm,
-+                                                  MemoryRegionSection *section,
-+                                                  void *arg,
-+                                                  guest_memfd_section_cb cb)
++static int memory_attribute_for_each_discarded_section(const MemoryAttributeManager *mgr,
++                                                       MemoryRegionSection *section,
++                                                       void *arg,
++                                                       memory_attribute_section_cb cb)
 +{
-+    unsigned long first_zero_bit, last_zero_bit;
++    unsigned long first_bit, last_bit;
 +    uint64_t offset, size;
++    const int block_size = memory_attribute_manager_get_block_size(mgr);
 +    int ret = 0;
 +
-+    first_zero_bit = section->offset_within_region / gmm->block_size;
-+    first_zero_bit = find_next_zero_bit(gmm->bitmap, gmm->bitmap_size,
-+                                        first_zero_bit);
++    first_bit = section->offset_within_region / block_size;
++    first_bit = find_next_zero_bit(mgr->shared_bitmap, mgr->shared_bitmap_size,
++                                   first_bit);
 +
-+    while (first_zero_bit < gmm->bitmap_size) {
++    while (first_bit < mgr->shared_bitmap_size) {
 +        MemoryRegionSection tmp = *section;
 +
-+        offset = first_zero_bit * gmm->block_size;
-+        last_zero_bit = find_next_bit(gmm->bitmap, gmm->bitmap_size,
-+                                      first_zero_bit + 1) - 1;
-+        size = (last_zero_bit - first_zero_bit + 1) * gmm->block_size;
++        offset = first_bit * block_size;
++        last_bit = find_next_bit(mgr->shared_bitmap, mgr->shared_bitmap_size,
++                                      first_bit + 1) - 1;
++        size = (last_bit - first_bit + 1) * block_size;
 +
 +        if (!memory_region_section_intersect_range(&tmp, offset, size)) {
 +            break;
@@ -6266,56 +6742,58 @@ index 0000000000..3c370ba6d4
 +
 +        ret = cb(&tmp, arg);
 +        if (ret) {
++            error_report("%s: Failed to notify RAM discard listener: %s", __func__,
++                         strerror(-ret));
 +            break;
 +        }
 +
-+        first_zero_bit = find_next_zero_bit(gmm->bitmap, gmm->bitmap_size,
-+                                            last_zero_bit + 2);
++        first_bit = find_next_zero_bit(mgr->shared_bitmap, mgr->shared_bitmap_size,
++                                       last_bit + 2);
 +    }
 +
 +    return ret;
 +}
 +
-+static uint64_t guest_memfd_rdm_get_min_granularity(const RamDiscardManager *rdm,
-+                                                    const MemoryRegion *mr)
++static uint64_t memory_attribute_rdm_get_min_granularity(const RamDiscardManager *rdm,
++                                                         const MemoryRegion *mr)
 +{
-+    GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(rdm);
++    MemoryAttributeManager *mgr = MEMORY_ATTRIBUTE_MANAGER(rdm);
 +
-+    g_assert(mr == gmm->mr);
-+    return gmm->block_size;
++    g_assert(mr == mgr->mr);
++    return memory_attribute_manager_get_block_size(mgr);
 +}
 +
-+static void guest_memfd_rdm_register_listener(RamDiscardManager *rdm,
-+                                              RamDiscardListener *rdl,
-+                                              MemoryRegionSection *section)
++static void memory_attribute_rdm_register_listener(RamDiscardManager *rdm,
++                                                   RamDiscardListener *rdl,
++                                                   MemoryRegionSection *section)
 +{
-+    GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(rdm);
++    MemoryAttributeManager *mgr = MEMORY_ATTRIBUTE_MANAGER(rdm);
 +    int ret;
 +
-+    g_assert(section->mr == gmm->mr);
++    g_assert(section->mr == mgr->mr);
 +    rdl->section = memory_region_section_new_copy(section);
 +
-+    QLIST_INSERT_HEAD(&gmm->rdl_list, rdl, next);
++    QLIST_INSERT_HEAD(&mgr->rdl_list, rdl, next);
 +
-+    ret = guest_memfd_for_each_populated_section(gmm, section, rdl,
-+                                                 guest_memfd_notify_populate_cb);
++    ret = memory_attribute_for_each_populated_section(mgr, section, rdl,
++                                                      memory_attribute_notify_populate_cb);
 +    if (ret) {
 +        error_report("%s: Failed to register RAM discard listener: %s", __func__,
 +                     strerror(-ret));
 +    }
 +}
 +
-+static void guest_memfd_rdm_unregister_listener(RamDiscardManager *rdm,
-+                                                RamDiscardListener *rdl)
++static void memory_attribute_rdm_unregister_listener(RamDiscardManager *rdm,
++                                                     RamDiscardListener *rdl)
 +{
-+    GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(rdm);
++    MemoryAttributeManager *mgr = MEMORY_ATTRIBUTE_MANAGER(rdm);
 +    int ret;
 +
 +    g_assert(rdl->section);
-+    g_assert(rdl->section->mr == gmm->mr);
++    g_assert(rdl->section->mr == mgr->mr);
 +
-+    ret = guest_memfd_for_each_populated_section(gmm, rdl->section, rdl,
-+                                                 guest_memfd_notify_discard_cb);
++    ret = memory_attribute_for_each_populated_section(mgr, rdl->section, rdl,
++                                                      memory_attribute_notify_discard_cb);
 +    if (ret) {
 +        error_report("%s: Failed to unregister RAM discard listener: %s", __func__,
 +                     strerror(-ret));
@@ -6327,101 +6805,114 @@ index 0000000000..3c370ba6d4
 +
 +}
 +
-+typedef struct GuestMemfdReplayData {
-+    void *fn;
++typedef struct MemoryAttributeReplayData {
++    ReplayRamStateChange fn;
 +    void *opaque;
-+} GuestMemfdReplayData;
++} MemoryAttributeReplayData;
 +
-+static int guest_memfd_rdm_replay_populated_cb(MemoryRegionSection *section, void *arg)
++static int memory_attribute_rdm_replay_cb(MemoryRegionSection *section, void *arg)
 +{
-+    struct GuestMemfdReplayData *data = arg;
-+    ReplayRamPopulate replay_fn = data->fn;
++    MemoryAttributeReplayData *data = arg;
 +
-+    return replay_fn(section, data->opaque);
++    return data->fn(section, data->opaque);
 +}
 +
-+static int guest_memfd_rdm_replay_populated(const RamDiscardManager *rdm,
-+                                            MemoryRegionSection *section,
-+                                            ReplayRamPopulate replay_fn,
-+                                            void *opaque)
++static int memory_attribute_rdm_replay_populated(const RamDiscardManager *rdm,
++                                                 MemoryRegionSection *section,
++                                                 ReplayRamStateChange replay_fn,
++                                                 void *opaque)
 +{
-+    GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(rdm);
-+    struct GuestMemfdReplayData data = { .fn = replay_fn, .opaque = opaque };
++    MemoryAttributeManager *mgr = MEMORY_ATTRIBUTE_MANAGER(rdm);
++    MemoryAttributeReplayData data = { .fn = replay_fn, .opaque = opaque };
 +
-+    g_assert(section->mr == gmm->mr);
-+    return guest_memfd_for_each_populated_section(gmm, section, &data,
-+                                                  guest_memfd_rdm_replay_populated_cb);
++    g_assert(section->mr == mgr->mr);
++    return memory_attribute_for_each_populated_section(mgr, section, &data,
++                                                       memory_attribute_rdm_replay_cb);
 +}
 +
-+static int guest_memfd_rdm_replay_discarded_cb(MemoryRegionSection *section, void *arg)
++static int memory_attribute_rdm_replay_discarded(const RamDiscardManager *rdm,
++                                                 MemoryRegionSection *section,
++                                                 ReplayRamStateChange replay_fn,
++                                                 void *opaque)
 +{
-+    struct GuestMemfdReplayData *data = arg;
-+    ReplayRamDiscard replay_fn = data->fn;
++    MemoryAttributeManager *mgr = MEMORY_ATTRIBUTE_MANAGER(rdm);
++    MemoryAttributeReplayData data = { .fn = replay_fn, .opaque = opaque };
 +
-+    replay_fn(section, data->opaque);
-+
-+    return 0;
++    g_assert(section->mr == mgr->mr);
++    return memory_attribute_for_each_discarded_section(mgr, section, &data,
++                                                       memory_attribute_rdm_replay_cb);
 +}
 +
-+static void guest_memfd_rdm_replay_discarded(const RamDiscardManager *rdm,
-+                                             MemoryRegionSection *section,
-+                                             ReplayRamDiscard replay_fn,
-+                                             void *opaque)
++int memory_attribute_manager_realize(MemoryAttributeManager *mgr, MemoryRegion *mr)
 +{
-+    GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(rdm);
-+    struct GuestMemfdReplayData data = { .fn = replay_fn, .opaque = opaque };
++    uint64_t shared_bitmap_size;
++    const int block_size  = qemu_real_host_page_size();
++    int ret;
 +
-+    g_assert(section->mr == gmm->mr);
-+    guest_memfd_for_each_discarded_section(gmm, section, &data,
-+                                           guest_memfd_rdm_replay_discarded_cb);
++    shared_bitmap_size = ROUND_UP(mr->size, block_size) / block_size;
++
++    mgr->mr = mr;
++    ret = memory_region_set_ram_discard_manager(mgr->mr, RAM_DISCARD_MANAGER(mgr));
++    if (ret) {
++        return ret;
++    }
++    mgr->shared_bitmap_size = shared_bitmap_size;
++    mgr->shared_bitmap = bitmap_new(shared_bitmap_size);
++
++    return ret;
 +}
 +
-+static void guest_memfd_manager_init(Object *obj)
++void memory_attribute_manager_unrealize(MemoryAttributeManager *mgr)
 +{
-+    GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(obj);
-+
-+    QLIST_INIT(&gmm->rdl_list);
++    g_free(mgr->shared_bitmap);
++    memory_region_set_ram_discard_manager(mgr->mr, NULL);
 +}
 +
-+static void guest_memfd_manager_finalize(Object *obj)
++static void memory_attribute_manager_init(Object *obj)
 +{
-+    g_free(GUEST_MEMFD_MANAGER(obj)->bitmap);
++    MemoryAttributeManager *mgr = MEMORY_ATTRIBUTE_MANAGER(obj);
++
++    QLIST_INIT(&mgr->rdl_list);
 +}
 +
-+static void guest_memfd_manager_class_init(ObjectClass *oc, void *data)
++static void memory_attribute_manager_finalize(Object *obj)
++{
++}
++
++static void memory_attribute_manager_class_init(ObjectClass *oc, void *data)
 +{
 +    RamDiscardManagerClass *rdmc = RAM_DISCARD_MANAGER_CLASS(oc);
 +
-+    rdmc->get_min_granularity = guest_memfd_rdm_get_min_granularity;
-+    rdmc->register_listener = guest_memfd_rdm_register_listener;
-+    rdmc->unregister_listener = guest_memfd_rdm_unregister_listener;
-+    rdmc->is_populated = guest_memfd_rdm_is_populated;
-+    rdmc->replay_populated = guest_memfd_rdm_replay_populated;
-+    rdmc->replay_discarded = guest_memfd_rdm_replay_discarded;
++    rdmc->get_min_granularity = memory_attribute_rdm_get_min_granularity;
++    rdmc->register_listener = memory_attribute_rdm_register_listener;
++    rdmc->unregister_listener = memory_attribute_rdm_unregister_listener;
++    rdmc->is_populated = memory_attribute_rdm_is_populated;
++    rdmc->replay_populated = memory_attribute_rdm_replay_populated;
++    rdmc->replay_discarded = memory_attribute_rdm_replay_discarded;
 +}
 diff --git a/system/meson.build b/system/meson.build
-index 4952f4b2c7..ed4e1137bd 100644
+index 4952f4b2c7..ab07ff1442 100644
 --- a/system/meson.build
 +++ b/system/meson.build
 @@ -15,6 +15,7 @@ system_ss.add(files(
    'dirtylimit.c',
    'dma-helpers.c',
    'globals.c',
-+  'guest-memfd-manager.c',
++  'memory-attribute-manager.c',
    'memory_mapping.c',
    'qdev-monitor.c',
    'qtest.c',
 -- 
-2.43.5
+2.25.1
 
 
-From dd211bf4a087dab2a0244a105e0e239fee626807 Mon Sep 17 00:00:00 2001
+From f3289805b1d5d6ba41bc975a9c5f4611a88e5b60 Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
 Date: Tue, 18 Jun 2024 05:32:07 +0000
-Subject: [PATCH 56/60] guest_memfd: Introduce a callback to notify the
- shared/private state change
+Subject: [PATCH 60/62] memory-attribute-manager: Introduce a callback to
+ notify the shared/private state change
 
-Introduce a new state_change() callback in GuestMemfdManagerClass to
+Introduce a new state_change() callback in MemoryAttributeManagerClass to
 efficiently notify all registered RamDiscardListeners, including VFIO
 listeners about the memory conversion events in guest_memfd. The
 existing VFIO listener can dynamically DMA map/unmap the shared pages
@@ -6436,48 +6927,87 @@ Additionally, there could be some special conversion requests:
   state, the helper simply returns success.
 - For requests involving a range partially in the desired state, only
   the necessary segments are converted, ensuring the entire range
-  complies with the request efficiently.
+  complies with the request efficiently. In this case, fallback to a "1
+  block at a time" handling.
 - In scenarios where a conversion request is declined by other systems,
   such as a failure from VFIO during notify_populate(), the helper will
   roll back the request, maintaining consistency.
 
+Note that the bitmap status is updated before the notifier callbacks so
+that the listener can handle the memory based on the latest status.
+
+Opportunistically introduce a helper to trigger the state_change()
+callback of the class.
+
 Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
 ---
- include/system/guest-memfd-manager.h |   3 +
- system/guest-memfd-manager.c         | 144 +++++++++++++++++++++++++++
- 2 files changed, 147 insertions(+)
+Changes in v3:
+    - Move the bitmap update before notifier callbacks.
+    - Call the notifier callbacks directly in notify_discard/populate()
+      with the expectation that the request memory range is in the
+      desired attribute.
+    - For the case that only partial range in the desire status, handle
+      the range with block_size granularity for ease of rollback
+      (https://lore.kernel.org/qemu-devel/812768d7-a02d-4b29-95f3-fb7a125cf54e@redhat.com/)
 
-diff --git a/include/system/guest-memfd-manager.h b/include/system/guest-memfd-manager.h
-index 6fbeb10ece..f597c26b6e 100644
---- a/include/system/guest-memfd-manager.h
-+++ b/include/system/guest-memfd-manager.h
-@@ -41,6 +41,9 @@ struct GuestMemfdManager {
+Changes in v2:
+    - Do the alignment changes due to the rename to MemoryAttributeManager
+    - Move the state_change() helper definition in this patch.
+---
+ include/system/memory-attribute-manager.h |  18 +++
+ system/memory-attribute-manager.c         | 188 ++++++++++++++++++++++
+ 2 files changed, 206 insertions(+)
+
+diff --git a/include/system/memory-attribute-manager.h b/include/system/memory-attribute-manager.h
+index 23375a14b8..3d9227d62a 100644
+--- a/include/system/memory-attribute-manager.h
++++ b/include/system/memory-attribute-manager.h
+@@ -34,8 +34,26 @@ struct MemoryAttributeManager {
  
- struct GuestMemfdManagerClass {
+ struct MemoryAttributeManagerClass {
      ObjectClass parent_class;
 +
-+    int (*state_change)(GuestMemfdManager *gmm, uint64_t offset, uint64_t size,
-+                        bool shared_to_private);
++    int (*state_change)(MemoryAttributeManager *mgr, uint64_t offset, uint64_t size,
++                        bool to_private);
  };
  
- #endif
-diff --git a/system/guest-memfd-manager.c b/system/guest-memfd-manager.c
-index 3c370ba6d4..ac273cd1e1 100644
---- a/system/guest-memfd-manager.c
-+++ b/system/guest-memfd-manager.c
-@@ -225,6 +225,147 @@ static void guest_memfd_rdm_replay_discarded(const RamDiscardManager *rdm,
-                                            guest_memfd_rdm_replay_discarded_cb);
++static inline int memory_attribute_manager_state_change(MemoryAttributeManager *mgr, uint64_t offset,
++                                                        uint64_t size, bool to_private)
++{
++    MemoryAttributeManagerClass *klass;
++
++    if (mgr == NULL) {
++        return 0;
++    }
++
++    klass = MEMORY_ATTRIBUTE_MANAGER_GET_CLASS(mgr);
++
++    g_assert(klass->state_change);
++    return klass->state_change(mgr, offset, size, to_private);
++}
++
+ int memory_attribute_manager_realize(MemoryAttributeManager *mgr, MemoryRegion *mr);
+ void memory_attribute_manager_unrealize(MemoryAttributeManager *mgr);
+ 
+diff --git a/system/memory-attribute-manager.c b/system/memory-attribute-manager.c
+index 7c3789cf49..6456babc95 100644
+--- a/system/memory-attribute-manager.c
++++ b/system/memory-attribute-manager.c
+@@ -234,6 +234,191 @@ static int memory_attribute_rdm_replay_discarded(const RamDiscardManager *rdm,
+                                                        memory_attribute_rdm_replay_cb);
  }
  
-+static bool guest_memfd_is_valid_range(GuestMemfdManager *gmm,
-+                                       uint64_t offset, uint64_t size)
++static bool memory_attribute_is_valid_range(MemoryAttributeManager *mgr,
++                                            uint64_t offset, uint64_t size)
 +{
-+    MemoryRegion *mr = gmm->mr;
++    MemoryRegion *mr = mgr->mr;
 +
 +    g_assert(mr);
 +
 +    uint64_t region_size = memory_region_size(mr);
-+    if (!QEMU_IS_ALIGNED(offset, gmm->block_size)) {
++    int block_size = memory_attribute_manager_get_block_size(mgr);
++
++    if (!QEMU_IS_ALIGNED(offset, block_size)) {
 +        return false;
 +    }
 +    if (offset + size < offset || !size) {
@@ -6489,39 +7019,34 @@ index 3c370ba6d4..ac273cd1e1 100644
 +    return true;
 +}
 +
-+static void guest_memfd_notify_discard(GuestMemfdManager *gmm,
-+                                       uint64_t offset, uint64_t size)
++static void memory_attribute_notify_discard(MemoryAttributeManager *mgr,
++                                            uint64_t offset, uint64_t size)
 +{
 +    RamDiscardListener *rdl;
 +
-+    QLIST_FOREACH(rdl, &gmm->rdl_list, next) {
++    QLIST_FOREACH(rdl, &mgr->rdl_list, next) {
 +        MemoryRegionSection tmp = *rdl->section;
 +
 +        if (!memory_region_section_intersect_range(&tmp, offset, size)) {
 +            continue;
 +        }
-+
-+        guest_memfd_for_each_populated_section(gmm, &tmp, rdl,
-+                                               guest_memfd_notify_discard_cb);
++        rdl->notify_discard(rdl, &tmp);
 +    }
 +}
 +
-+
-+static int guest_memfd_notify_populate(GuestMemfdManager *gmm,
-+                                       uint64_t offset, uint64_t size)
++static int memory_attribute_notify_populate(MemoryAttributeManager *mgr,
++                                            uint64_t offset, uint64_t size)
 +{
 +    RamDiscardListener *rdl, *rdl2;
 +    int ret = 0;
 +
-+    QLIST_FOREACH(rdl, &gmm->rdl_list, next) {
++    QLIST_FOREACH(rdl, &mgr->rdl_list, next) {
 +        MemoryRegionSection tmp = *rdl->section;
 +
 +        if (!memory_region_section_intersect_range(&tmp, offset, size)) {
 +            continue;
 +        }
-+
-+        ret = guest_memfd_for_each_discarded_section(gmm, &tmp, rdl,
-+                                                     guest_memfd_notify_populate_cb);
++        ret = rdl->notify_populate(rdl, &tmp);
 +        if (ret) {
 +            break;
 +        }
@@ -6529,7 +7054,7 @@ index 3c370ba6d4..ac273cd1e1 100644
 +
 +    if (ret) {
 +        /* Notify all already-notified listeners. */
-+        QLIST_FOREACH(rdl2, &gmm->rdl_list, next) {
++        QLIST_FOREACH(rdl2, &mgr->rdl_list, next) {
 +            MemoryRegionSection tmp = *rdl2->section;
 +
 +            if (rdl2 == rdl) {
@@ -6538,335 +7063,359 @@ index 3c370ba6d4..ac273cd1e1 100644
 +            if (!memory_region_section_intersect_range(&tmp, offset, size)) {
 +                continue;
 +            }
-+
-+            guest_memfd_for_each_discarded_section(gmm, &tmp, rdl2,
-+                                                   guest_memfd_notify_discard_cb);
++            rdl2->notify_discard(rdl2, &tmp);
 +        }
 +    }
 +    return ret;
 +}
 +
-+static bool guest_memfd_is_range_populated(GuestMemfdManager *gmm,
-+                                           uint64_t offset, uint64_t size)
++static bool memory_attribute_is_range_populated(MemoryAttributeManager *mgr,
++                                                uint64_t offset, uint64_t size)
 +{
-+    const unsigned long first_bit = offset / gmm->block_size;
-+    const unsigned long last_bit = first_bit + (size / gmm->block_size) - 1;
++    const int block_size = memory_attribute_manager_get_block_size(mgr);
++    const unsigned long first_bit = offset / block_size;
++    const unsigned long last_bit = first_bit + (size / block_size) - 1;
 +    unsigned long found_bit;
 +
 +    /* We fake a shorter bitmap to avoid searching too far. */
-+    found_bit = find_next_zero_bit(gmm->bitmap, last_bit + 1, first_bit);
++    found_bit = find_next_zero_bit(mgr->shared_bitmap, last_bit + 1, first_bit);
 +    return found_bit > last_bit;
 +}
 +
-+static bool guest_memfd_is_range_discarded(GuestMemfdManager *gmm,
-+                                           uint64_t offset, uint64_t size)
++static bool memory_attribute_is_range_discarded(MemoryAttributeManager *mgr,
++                                                uint64_t offset, uint64_t size)
 +{
-+    const unsigned long first_bit = offset / gmm->block_size;
-+    const unsigned long last_bit = first_bit + (size / gmm->block_size) - 1;
++    const int block_size = memory_attribute_manager_get_block_size(mgr);
++    const unsigned long first_bit = offset / block_size;
++    const unsigned long last_bit = first_bit + (size / block_size) - 1;
 +    unsigned long found_bit;
 +
 +    /* We fake a shorter bitmap to avoid searching too far. */
-+    found_bit = find_next_bit(gmm->bitmap, last_bit + 1, first_bit);
++    found_bit = find_next_bit(mgr->shared_bitmap, last_bit + 1, first_bit);
 +    return found_bit > last_bit;
 +}
 +
-+static int guest_memfd_state_change(GuestMemfdManager *gmm, uint64_t offset,
-+                                    uint64_t size, bool shared_to_private)
++static int memory_attribute_state_change(MemoryAttributeManager *mgr, uint64_t offset,
++                                         uint64_t size, bool to_private)
 +{
++    const int block_size = memory_attribute_manager_get_block_size(mgr);
++    const unsigned long first_bit = offset / block_size;
++    const unsigned long nbits = size / block_size;
++    const uint64_t end = offset + size;
++    unsigned long bit;
++    uint64_t cur;
 +    int ret = 0;
 +
-+    if (!guest_memfd_is_valid_range(gmm, offset, size)) {
++    if (!memory_attribute_is_valid_range(mgr, offset, size)) {
 +        error_report("%s, invalid range: offset 0x%lx, size 0x%lx",
 +                     __func__, offset, size);
 +        return -1;
 +    }
 +
-+    if ((shared_to_private && guest_memfd_is_range_discarded(gmm, offset, size)) ||
-+        (!shared_to_private && guest_memfd_is_range_populated(gmm, offset, size))) {
-+        return 0;
-+    }
-+
-+    if (shared_to_private) {
-+        guest_memfd_notify_discard(gmm, offset, size);
-+    } else {
-+        ret = guest_memfd_notify_populate(gmm, offset, size);
-+    }
-+
-+    if (!ret) {
-+        unsigned long first_bit = offset / gmm->block_size;
-+        unsigned long nbits = size / gmm->block_size;
-+
-+        g_assert((first_bit + nbits) <= gmm->bitmap_size);
-+
-+        if (shared_to_private) {
-+            bitmap_clear(gmm->bitmap, first_bit, nbits);
++    if (to_private) {
++        if (memory_attribute_is_range_discarded(mgr, offset, size)) {
++            /* Already private */
++        } else if (!memory_attribute_is_range_populated(mgr, offset, size)) {
++            /* Unexpected mixture: process individual blocks */
++            for (cur = offset; cur < end; cur += block_size) {
++                bit = cur / block_size;
++                if (!test_bit(bit, mgr->shared_bitmap)) {
++                    continue;
++                }
++                clear_bit(bit, mgr->shared_bitmap);
++                memory_attribute_notify_discard(mgr, cur, block_size);
++            }
 +        } else {
-+            bitmap_set(gmm->bitmap, first_bit, nbits);
++            /* Completely shared */
++            bitmap_clear(mgr->shared_bitmap, first_bit, nbits);
++            memory_attribute_notify_discard(mgr, offset, size);
 +        }
++    } else {
++        if (memory_attribute_is_range_populated(mgr, offset, size)) {
++            /* Already shared */
++        } else if (!memory_attribute_is_range_discarded(mgr, offset, size)) {
++            /* Unexpected mixture: process individual blocks */
++            unsigned long *modified_bitmap = bitmap_new(nbits);
 +
-+        return 0;
++            for (cur = offset; cur < end; cur += block_size) {
++                bit = cur / block_size;
++                if (test_bit(bit, mgr->shared_bitmap)) {
++                    continue;
++                }
++                set_bit(bit, mgr->shared_bitmap);
++                ret = memory_attribute_notify_populate(mgr, cur, block_size);
++                if (!ret) {
++                    set_bit(bit - first_bit, modified_bitmap);
++                    continue;
++                }
++                clear_bit(bit, mgr->shared_bitmap);
++                break;
++            }
++
++            if (ret) {
++                /*
++                 * Very unexpected: something went wrong. Revert to the old
++                 * state, marking only the blocks as private that we converted
++                 * to shared.
++                 */
++                for (cur = offset; cur < end; cur += block_size) {
++                    bit = cur / block_size;
++                    if (!test_bit(bit - first_bit, modified_bitmap)) {
++                        continue;
++                    }
++                    assert(test_bit(bit, mgr->shared_bitmap));
++                    clear_bit(bit, mgr->shared_bitmap);
++                    memory_attribute_notify_discard(mgr, cur, block_size);
++                }
++            }
++            g_free(modified_bitmap);
++        } else {
++            /* Complete private */
++            bitmap_set(mgr->shared_bitmap, first_bit, nbits);
++            ret = memory_attribute_notify_populate(mgr, offset, size);
++            if (ret) {
++                bitmap_clear(mgr->shared_bitmap, first_bit, nbits);
++            }
++        }
 +    }
 +
 +    return ret;
 +}
 +
- static void guest_memfd_manager_init(Object *obj)
+ int memory_attribute_manager_realize(MemoryAttributeManager *mgr, MemoryRegion *mr)
  {
-     GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(obj);
-@@ -239,8 +380,11 @@ static void guest_memfd_manager_finalize(Object *obj)
+     uint64_t shared_bitmap_size;
+@@ -272,8 +457,11 @@ static void memory_attribute_manager_finalize(Object *obj)
  
- static void guest_memfd_manager_class_init(ObjectClass *oc, void *data)
+ static void memory_attribute_manager_class_init(ObjectClass *oc, void *data)
  {
-+    GuestMemfdManagerClass *gmmc = GUEST_MEMFD_MANAGER_CLASS(oc);
++    MemoryAttributeManagerClass *mamc = MEMORY_ATTRIBUTE_MANAGER_CLASS(oc);
      RamDiscardManagerClass *rdmc = RAM_DISCARD_MANAGER_CLASS(oc);
  
-+    gmmc->state_change = guest_memfd_state_change;
++    mamc->state_change = memory_attribute_state_change;
 +
-     rdmc->get_min_granularity = guest_memfd_rdm_get_min_granularity;
-     rdmc->register_listener = guest_memfd_rdm_register_listener;
-     rdmc->unregister_listener = guest_memfd_rdm_unregister_listener;
+     rdmc->get_min_granularity = memory_attribute_rdm_get_min_granularity;
+     rdmc->register_listener = memory_attribute_rdm_register_listener;
+     rdmc->unregister_listener = memory_attribute_rdm_unregister_listener;
 -- 
-2.43.5
+2.25.1
 
 
-From f2ba8f9aa220effd6578136c5e206f863f0948de Mon Sep 17 00:00:00 2001
+From a9049658f96a04b7dfaec8b83bc249a6bb2b9109 Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
-Date: Fri, 14 Jun 2024 08:20:22 +0000
-Subject: [PATCH 57/60] KVM: Notify the state change event during
- shared/private conversion
+Date: Tue, 18 Jun 2024 07:31:33 +0000
+Subject: [PATCH 61/62] memory: Attach MemoryAttributeManager to
+ guest_memfd-backed RAMBlocks
 
-Introduce a helper to trigger the state_change() callback of the class.
-Once exit to userspace to convert the page from private to shared or
-vice versa at runtime, notify the event via the helper so that other
-registered subsystems like VFIO can be notified.
+Introduce a new field, memory_attribute_manager, in RAMBlock to link to
+an MemoryAttributeManager object. This change centralizes all
+guest_memfd state information (like fd and shared_bitmap) within a
+RAMBlock, making it easier to manage.
+
+Use the realize()/unrealize() helpers to initialize/uninitialize the
+MemoryAttributeManager object. Register/unregister the object in the
+target RAMBlock's MemoryRegion when creating guest_memfd.
+
+In the kvm_convert_memory() function, manage memory state changes by
+using the shared_bitmap to call set_attribute() only on the specific
+memory range. Additionally, use the
+memory_attribute_manager_state_change() helper to notify the reigstered
+RamDiscardListener of these changes.
 
 Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
 ---
- accel/kvm/kvm-all.c                  |  4 ++++
- include/system/guest-memfd-manager.h | 15 +++++++++++++++
- 2 files changed, 19 insertions(+)
+Changes in v3:
+    - Use ram_discard_manager_reply_populated/discarded() to set the
+      memory attribute and add the undo support if state_change()
+      failed.
+    - Didn't add Reviewed-by from Alexey due to the new changes in this
+      commit.
+
+Changes in v2:
+    - Introduce a new field memory_attribute_manager in RAMBlock.
+    - Move the state_change() handling during page conversion in this patch.
+    - Undo what we did if it fails to set.
+    - Change the order of close(guest_memfd) and memory_attribute_manager cleanup.
+---
+ accel/kvm/kvm-all.c     | 50 +++++++++++++++++++++++++++++++++++++++--
+ include/exec/ramblock.h |  2 ++
+ system/physmem.c        | 13 +++++++++++
+ 3 files changed, 63 insertions(+), 2 deletions(-)
 
 diff --git a/accel/kvm/kvm-all.c b/accel/kvm/kvm-all.c
-index c1fea69d58..abcffb7f6c 100644
+index c1fea69d58..a89c5655e8 100644
 --- a/accel/kvm/kvm-all.c
 +++ b/accel/kvm/kvm-all.c
 @@ -48,6 +48,7 @@
  #include "kvm-cpus.h"
  #include "system/dirtylimit.h"
  #include "qemu/range.h"
-+#include "system/guest-memfd-manager.h"
++#include "system/memory-attribute-manager.h"
  
  #include "hw/boards.h"
  #include "system/stats.h"
-@@ -3088,6 +3089,9 @@ int kvm_convert_memory(hwaddr start, hwaddr size, bool to_private)
+@@ -3018,6 +3019,25 @@ static void kvm_eat_signals(CPUState *cpu)
+     } while (sigismember(&chkset, SIG_IPI));
+ }
+ 
++typedef struct SetMemoryAttribute {
++    bool to_private;
++} SetMemoryAttribute;
++
++static int kvm_set_memory_attributes_cb(MemoryRegionSection *section,
++                                        void *opaque)
++{
++    hwaddr start = section->offset_within_address_space;
++    hwaddr size = section->size;
++    SetMemoryAttribute *args = opaque;
++    bool to_private = args->to_private;
++
++    if (to_private) {
++        return kvm_set_memory_attributes_private(start, size);
++    } else {
++        return kvm_set_memory_attributes_shared(start, size);
++    }
++}
++
+ int kvm_convert_memory(hwaddr start, hwaddr size, bool to_private)
+ {
+     MemoryRegionSection section;
+@@ -3026,6 +3046,7 @@ int kvm_convert_memory(hwaddr start, hwaddr size, bool to_private)
+     RAMBlock *rb;
+     void *addr;
+     int ret = -EINVAL;
++    SetMemoryAttribute args = { .to_private = to_private };
+ 
+     trace_kvm_convert_memory(start, size, to_private ? "shared_to_private" : "private_to_shared");
+ 
+@@ -3077,9 +3098,13 @@ int kvm_convert_memory(hwaddr start, hwaddr size, bool to_private)
+     }
+ 
+     if (to_private) {
+-        ret = kvm_set_memory_attributes_private(start, size);
++        ret = ram_discard_manager_replay_populated(mr->rdm, &section,
++                                                   kvm_set_memory_attributes_cb,
++                                                   &args);
+     } else {
+-        ret = kvm_set_memory_attributes_shared(start, size);
++        ret = ram_discard_manager_replay_discarded(mr->rdm, &section,
++                                                   kvm_set_memory_attributes_cb,
++                                                   &args);
+     }
+     if (ret) {
+         goto out_unref;
+@@ -3088,6 +3113,27 @@ int kvm_convert_memory(hwaddr start, hwaddr size, bool to_private)
      addr = memory_region_get_ram_ptr(mr) + section.offset_within_region;
      rb = qemu_ram_block_from_host(addr, false, &offset);
  
-+    guest_memfd_manager_state_change(GUEST_MEMFD_MANAGER(mr->rdm), offset,
-+                                     size, to_private);
++    ret = memory_attribute_manager_state_change(MEMORY_ATTRIBUTE_MANAGER(mr->rdm),
++                                                offset, size, to_private);
++    if (ret) {
++        warn_report("Failed to notify the listener the state change of "
++                    "(0x%"HWADDR_PRIx" + 0x%"HWADDR_PRIx") to %s",
++                    start, size, to_private ? "private" : "shared");
++        args.to_private = !to_private;
++        if (to_private) {
++            ret = ram_discard_manager_replay_populated(mr->rdm, &section,
++                                                       kvm_set_memory_attributes_cb,
++                                                       &args);
++        } else {
++            ret = ram_discard_manager_replay_discarded(mr->rdm, &section,
++                                                       kvm_set_memory_attributes_cb,
++                                                       &args);
++        }
++        if (ret) {
++            goto out_unref;
++        }
++    }
 +
      if (to_private) {
          if (rb->page_size != qemu_real_host_page_size()) {
              /*
-diff --git a/include/system/guest-memfd-manager.h b/include/system/guest-memfd-manager.h
-index f597c26b6e..6beff3e5d2 100644
---- a/include/system/guest-memfd-manager.h
-+++ b/include/system/guest-memfd-manager.h
-@@ -46,4 +46,19 @@ struct GuestMemfdManagerClass {
-                         bool shared_to_private);
- };
+diff --git a/include/exec/ramblock.h b/include/exec/ramblock.h
+index 0babd105c0..06fd365326 100644
+--- a/include/exec/ramblock.h
++++ b/include/exec/ramblock.h
+@@ -23,6 +23,7 @@
+ #include "cpu-common.h"
+ #include "qemu/rcu.h"
+ #include "exec/ramlist.h"
++#include "system/memory-attribute-manager.h"
  
-+static inline int guest_memfd_manager_state_change(GuestMemfdManager *gmm, uint64_t offset,
-+                                                   uint64_t size, bool shared_to_private)
-+{
-+    GuestMemfdManagerClass *klass;
-+
-+    g_assert(gmm);
-+    klass = GUEST_MEMFD_MANAGER_GET_CLASS(gmm);
-+
-+    if (klass->state_change) {
-+        return klass->state_change(gmm, offset, size, shared_to_private);
-+    }
-+
-+    return 0;
-+}
-+
- #endif
--- 
-2.43.5
-
-
-From 5b01ee93fa4c531f7cb82e80700d72bff536e6fd Mon Sep 17 00:00:00 2001
-From: Chenyi Qiang <chenyi.qiang@intel.com>
-Date: Tue, 18 Jun 2024 07:31:33 +0000
-Subject: [PATCH 58/60] memory: Register the RamDiscardManager instance upon
- guest_memfd creation
-
-Introduce the realize()/unrealize() callbacks to initialize/uninitialize
-the new guest_memfd_manager object and register/unregister it in the
-target MemoryRegion.
-
-Guest_memfd was initially set to shared until the commit bd3bcf6962
-("kvm/memory: Make memory type private by default if it has guest memfd
-backend"). To align with this change, the default state in
-guest_memfd_manager is set to private. (The bitmap is cleared to 0).
-Additionally, setting the default to private can also reduce the
-overhead of mapping shared pages into IOMMU by VFIO during the bootup stage.
-
-Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
----
- include/system/guest-memfd-manager.h | 27 +++++++++++++++++++++++++++
- system/guest-memfd-manager.c         | 28 +++++++++++++++++++++++++++-
- system/physmem.c                     |  7 +++++++
- 3 files changed, 61 insertions(+), 1 deletion(-)
-
-diff --git a/include/system/guest-memfd-manager.h b/include/system/guest-memfd-manager.h
-index 6beff3e5d2..d9404c40ec 100644
---- a/include/system/guest-memfd-manager.h
-+++ b/include/system/guest-memfd-manager.h
-@@ -42,6 +42,8 @@ struct GuestMemfdManager {
- struct GuestMemfdManagerClass {
-     ObjectClass parent_class;
- 
-+    void (*realize)(GuestMemfdManager *gmm, MemoryRegion *mr, uint64_t region_size);
-+    void (*unrealize)(GuestMemfdManager *gmm);
-     int (*state_change)(GuestMemfdManager *gmm, uint64_t offset, uint64_t size,
-                         bool shared_to_private);
- };
-@@ -61,4 +63,29 @@ static inline int guest_memfd_manager_state_change(GuestMemfdManager *gmm, uint6
-     return 0;
- }
- 
-+static inline void guest_memfd_manager_realize(GuestMemfdManager *gmm,
-+                                              MemoryRegion *mr, uint64_t region_size)
-+{
-+    GuestMemfdManagerClass *klass;
-+
-+    g_assert(gmm);
-+    klass = GUEST_MEMFD_MANAGER_GET_CLASS(gmm);
-+
-+    if (klass->realize) {
-+        klass->realize(gmm, mr, region_size);
-+    }
-+}
-+
-+static inline void guest_memfd_manager_unrealize(GuestMemfdManager *gmm)
-+{
-+    GuestMemfdManagerClass *klass;
-+
-+    g_assert(gmm);
-+    klass = GUEST_MEMFD_MANAGER_GET_CLASS(gmm);
-+
-+    if (klass->unrealize) {
-+        klass->unrealize(gmm);
-+    }
-+}
-+
- #endif
-diff --git a/system/guest-memfd-manager.c b/system/guest-memfd-manager.c
-index ac273cd1e1..cae1d4d959 100644
---- a/system/guest-memfd-manager.c
-+++ b/system/guest-memfd-manager.c
-@@ -366,6 +366,31 @@ static int guest_memfd_state_change(GuestMemfdManager *gmm, uint64_t offset,
-     return ret;
- }
- 
-+static void guest_memfd_manager_realizefn(GuestMemfdManager *gmm, MemoryRegion *mr,
-+                                          uint64_t region_size)
-+{
-+    uint64_t bitmap_size;
-+
-+    gmm->block_size = qemu_real_host_page_size();
-+    bitmap_size = ROUND_UP(region_size, gmm->block_size) / gmm->block_size;
-+
-+    gmm->mr = mr;
-+    gmm->bitmap_size = bitmap_size;
-+    gmm->bitmap = bitmap_new(bitmap_size);
-+
-+    memory_region_set_ram_discard_manager(gmm->mr, RAM_DISCARD_MANAGER(gmm));
-+}
-+
-+static void guest_memfd_manager_unrealizefn(GuestMemfdManager *gmm)
-+{
-+    memory_region_set_ram_discard_manager(gmm->mr, NULL);
-+
-+    g_free(gmm->bitmap);
-+    gmm->bitmap = NULL;
-+    gmm->bitmap_size = 0;
-+    gmm->mr = NULL;
-+}
-+
- static void guest_memfd_manager_init(Object *obj)
- {
-     GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(obj);
-@@ -375,7 +400,6 @@ static void guest_memfd_manager_init(Object *obj)
- 
- static void guest_memfd_manager_finalize(Object *obj)
- {
--    g_free(GUEST_MEMFD_MANAGER(obj)->bitmap);
- }
- 
- static void guest_memfd_manager_class_init(ObjectClass *oc, void *data)
-@@ -384,6 +408,8 @@ static void guest_memfd_manager_class_init(ObjectClass *oc, void *data)
-     RamDiscardManagerClass *rdmc = RAM_DISCARD_MANAGER_CLASS(oc);
- 
-     gmmc->state_change = guest_memfd_state_change;
-+    gmmc->realize = guest_memfd_manager_realizefn;
-+    gmmc->unrealize = guest_memfd_manager_unrealizefn;
- 
-     rdmc->get_min_granularity = guest_memfd_rdm_get_min_granularity;
-     rdmc->register_listener = guest_memfd_rdm_register_listener;
+ struct RAMBlock {
+     struct rcu_head rcu;
+@@ -42,6 +43,7 @@ struct RAMBlock {
+     int fd;
+     uint64_t fd_offset;
+     int guest_memfd;
++    MemoryAttributeManager *memory_attribute_manager;
+     size_t page_size;
+     /* dirty bitmap used during migration */
+     unsigned long *bmap;
 diff --git a/system/physmem.c b/system/physmem.c
-index c76503aea8..6507c8137d 100644
+index c76503aea8..0ed394c5d2 100644
 --- a/system/physmem.c
 +++ b/system/physmem.c
 @@ -54,6 +54,7 @@
  #include "system/hostmem.h"
  #include "system/hw_accel.h"
  #include "system/xen-mapcache.h"
-+#include "system/guest-memfd-manager.h"
++#include "system/memory-attribute-manager.h"
  #include "trace.h"
  
  #ifdef CONFIG_FALLOCATE_PUNCH_HOLE
-@@ -1885,6 +1886,9 @@ static void ram_block_add(RAMBlock *new_block, Error **errp)
+@@ -1885,6 +1886,16 @@ static void ram_block_add(RAMBlock *new_block, Error **errp)
              qemu_mutex_unlock_ramlist();
              goto out_free;
          }
 +
-+        GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(object_new(TYPE_GUEST_MEMFD_MANAGER));
-+        guest_memfd_manager_realize(gmm, new_block->mr, new_block->mr->size);
++        new_block->memory_attribute_manager = MEMORY_ATTRIBUTE_MANAGER(object_new(TYPE_MEMORY_ATTRIBUTE_MANAGER));
++        if (memory_attribute_manager_realize(new_block->memory_attribute_manager, new_block->mr)) {
++            error_setg(errp, "Failed to realize memory attribute manager");
++            object_unref(OBJECT(new_block->memory_attribute_manager));
++            close(new_block->guest_memfd);
++            ram_block_discard_require(false);
++            qemu_mutex_unlock_ramlist();
++            goto out_free;
++        }
      }
  
      ram_size = (new_block->offset + new_block->max_length) >> TARGET_PAGE_BITS;
-@@ -2139,6 +2143,9 @@ static void reclaim_ramblock(RAMBlock *block)
- 
-     if (block->guest_memfd >= 0) {
-         close(block->guest_memfd);
-+        GuestMemfdManager *gmm = GUEST_MEMFD_MANAGER(block->mr->rdm);
-+        guest_memfd_manager_unrealize(gmm);
-+        object_unref(OBJECT(gmm));
-         ram_block_discard_require(false);
+@@ -2138,6 +2149,8 @@ static void reclaim_ramblock(RAMBlock *block)
      }
  
+     if (block->guest_memfd >= 0) {
++        memory_attribute_manager_unrealize(block->memory_attribute_manager);
++        object_unref(OBJECT(block->memory_attribute_manager));
+         close(block->guest_memfd);
+         ram_block_discard_require(false);
+     }
 -- 
-2.43.5
+2.25.1
 
 
-From 4110cda58a397a966e433d97b32a726cde08c042 Mon Sep 17 00:00:00 2001
+From 1476927c06adaf4ec4ee4c056d2ba2fe9a6bd081 Mon Sep 17 00:00:00 2001
 From: Chenyi Qiang <chenyi.qiang@intel.com>
 Date: Fri, 21 Jun 2024 03:24:55 +0000
-Subject: [PATCH 59/60] RAMBlock: make guest_memfd require coordinate discard
+Subject: [PATCH 62/62] RAMBlock: Make guest_memfd require coordinate discard
 
-As guest_memfd is now managed by guest_memfd_manager with
+As guest_memfd is now managed by memory_attribute_manager with
 RamDiscardManager, only block uncoordinated discard.
 
 Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
 ---
- system/physmem.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v3:
+    - No change.
+
+Changes in v2:
+    - Change the ram_block_discard_require(false) to
+      ram_block_coordinated_discard_require(false).
+---
+ system/physmem.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/system/physmem.c b/system/physmem.c
-index 6507c8137d..68fe5e8b1a 100644
+index 0ed394c5d2..a30cdd43ee 100644
 --- a/system/physmem.c
 +++ b/system/physmem.c
 @@ -1872,7 +1872,7 @@ static void ram_block_add(RAMBlock *new_block, Error **errp)
@@ -6878,66 +7427,24 @@ index 6507c8137d..68fe5e8b1a 100644
          if (ret < 0) {
              error_setg_errno(errp, -ret,
                               "cannot set up private guest memory: discard currently blocked");
+@@ -1892,7 +1892,7 @@ static void ram_block_add(RAMBlock *new_block, Error **errp)
+             error_setg(errp, "Failed to realize memory attribute manager");
+             object_unref(OBJECT(new_block->memory_attribute_manager));
+             close(new_block->guest_memfd);
+-            ram_block_discard_require(false);
++            ram_block_coordinated_discard_require(false);
+             qemu_mutex_unlock_ramlist();
+             goto out_free;
+         }
+@@ -2152,7 +2152,7 @@ static void reclaim_ramblock(RAMBlock *block)
+         memory_attribute_manager_unrealize(block->memory_attribute_manager);
+         object_unref(OBJECT(block->memory_attribute_manager));
+         close(block->guest_memfd);
+-        ram_block_discard_require(false);
++        ram_block_coordinated_discard_require(false);
+     }
+ 
+     g_free(block);
 -- 
-2.43.5
-
-
-From cbd523b211a7c9eb151c4fa078534daeb162591b Mon Sep 17 00:00:00 2001
-From: Binbin Wu <binbin.wu@linux.intel.com>
-Date: Tue, 18 Feb 2025 14:02:31 +0800
-Subject: [PATCH 60/60] fixup! i386/tdx: Handle KVM_SYSTEM_EVENT_TDX_FATAL
-
----
- target/i386/kvm/tdx.c | 21 ++++++++++++++++-----
- 1 file changed, 16 insertions(+), 5 deletions(-)
-
-diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
-index c906a76c4c..d4d7ac81b5 100644
---- a/target/i386/kvm/tdx.c
-+++ b/target/i386/kvm/tdx.c
-@@ -1071,7 +1071,7 @@ static void tdx_panicked_on_fatal_error(X86CPU *cpu, uint64_t error_code,
- 
- int tdx_handle_report_fatal_error(X86CPU *cpu, struct kvm_run *run)
- {
--    uint64_t error_code = run->system_event.data[0];
-+    uint64_t error_code = run->system_event.data[R_R12];
-     char *message = NULL;
-     uint64_t gpa = -1ull;
- 
-@@ -1081,18 +1081,29 @@ int tdx_handle_report_fatal_error(X86CPU *cpu, struct kvm_run *run)
-         return -1;
-     }
- 
--    /* It has optional message */
--    if (run->system_event.data[2]) {
-+    /* It has optional message, treat it as ASCII byte stream. */
-+    if (run->system_event.data[R_R14]) {
-+	uint64_t * tmp;
-+
- #define TDX_FATAL_MESSAGE_MAX        64
-         message = g_malloc0(TDX_FATAL_MESSAGE_MAX + 1);
- 
--        memcpy(message, &run->system_event.data[2], TDX_FATAL_MESSAGE_MAX);
-+	tmp = (uint64_t *)message;
-+        /* The order is defined in TDX GHCI spec */
-+        *(tmp++) = cpu_to_le64(run->system_event.data[R_R14]);
-+        *(tmp++) = cpu_to_le64(run->system_event.data[R_R15]);
-+        *(tmp++) = cpu_to_le64(run->system_event.data[R_EBX]);
-+        *(tmp++) = cpu_to_le64(run->system_event.data[R_EDI]);
-+        *(tmp++) = cpu_to_le64(run->system_event.data[R_ESI]);
-+        *(tmp++) = cpu_to_le64(run->system_event.data[R_R8]);
-+        *(tmp++) = cpu_to_le64(run->system_event.data[R_R9]);
-+        *(tmp++) = cpu_to_le64(run->system_event.data[R_EDX]);
-         message[TDX_FATAL_MESSAGE_MAX] = '\0';
-     }
- 
- #define TDX_REPORT_FATAL_ERROR_GPA_VALID    BIT_ULL(63)
-     if (error_code & TDX_REPORT_FATAL_ERROR_GPA_VALID) {
--        gpa = run->system_event.data[1];
-+        gpa = run->system_event.data[R_R13];
-     }
- 
-     tdx_panicked_on_fatal_error(cpu, error_code, message, gpa);
--- 
-2.43.5
+2.25.1
 

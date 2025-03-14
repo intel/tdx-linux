@@ -1,0 +1,2 @@
+No extra patch is needed. Please use the kvm-coco-queue snapshot directly:
+https://github.com/intel/tdx/releases/tag/kvm-coco-queue-snapshot%2Fkvm-coco-queue-snapshot-20250313
