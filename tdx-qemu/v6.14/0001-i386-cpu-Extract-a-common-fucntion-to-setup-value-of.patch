@@ -1,0 +1,101 @@
+From 35b1ee7492a04574e1449bee787f01dd124c2437 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 19 Dec 2024 06:01:16 -0500
+Subject: [PATCH 01/71] i386/cpu: Extract a common fucntion to setup value of
+ MSR_CORE_THREAD_COUNT
+
+There are duplicated code to setup the value of MSR_CORE_THREAD_COUNT.
+Extract a common function for it.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Reviewed-by: Zhao Liu <zhao1.liu@intel.com>
+Link: https://lore.kernel.org/r/20241219110125.1266461-2-xiaoyao.li@intel.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ target/i386/cpu-sysemu.c             | 11 +++++++++++
+ target/i386/cpu.h                    |  2 ++
+ target/i386/hvf/x86_emu.c            |  3 +--
+ target/i386/kvm/kvm.c                |  5 +----
+ target/i386/tcg/sysemu/misc_helper.c |  3 +--
+ 5 files changed, 16 insertions(+), 8 deletions(-)
+
+diff --git a/target/i386/cpu-sysemu.c b/target/i386/cpu-sysemu.c
+index 227ac021f6..d92433de3e 100644
+--- a/target/i386/cpu-sysemu.c
++++ b/target/i386/cpu-sysemu.c
+@@ -309,3 +309,14 @@ void x86_cpu_get_crash_info_qom(Object *obj, Visitor *v,
+                                      errp);
+     qapi_free_GuestPanicInformation(panic_info);
+ }
++
++uint64_t cpu_x86_get_msr_core_thread_count(X86CPU *cpu)
++{
++    CPUState *cs = CPU(cpu);
++    uint64_t val;
++
++    val = cs->nr_threads * cs->nr_cores;  /* thread count, bits 15..0 */
++    val |= ((uint32_t)cs->nr_cores << 16); /* core count, bits 31..16 */
++
++    return val;
++}
+\ No newline at end of file
+diff --git a/target/i386/cpu.h b/target/i386/cpu.h
+index 4c239a6970..5e1beca94a 100644
+--- a/target/i386/cpu.h
++++ b/target/i386/cpu.h
+@@ -2390,6 +2390,8 @@ static inline void cpu_x86_load_seg_cache_sipi(X86CPU *cpu,
+     cs->halted = 0;
+ }
+ 
++uint64_t cpu_x86_get_msr_core_thread_count(X86CPU *cpu);
++
+ int cpu_x86_get_descr_debug(CPUX86State *env, unsigned int selector,
+                             target_ulong *base, unsigned int *limit,
+                             unsigned int *flags);
+diff --git a/target/i386/hvf/x86_emu.c b/target/i386/hvf/x86_emu.c
+index 015f760acb..69c61c9c07 100644
+--- a/target/i386/hvf/x86_emu.c
++++ b/target/i386/hvf/x86_emu.c
+@@ -765,8 +765,7 @@ void simulate_rdmsr(CPUX86State *env)
+         val = env->mtrr_deftype;
+         break;
+     case MSR_CORE_THREAD_COUNT:
+-        val = cs->nr_threads * cs->nr_cores;  /* thread count, bits 15..0 */
+-        val |= ((uint32_t)cs->nr_cores << 16); /* core count, bits 31..16 */
++        val = cpu_x86_get_msr_core_thread_count(cpu);
+         break;
+     default:
+         /* fprintf(stderr, "%s: unknown msr 0x%x\n", __func__, msr); */
+diff --git a/target/i386/kvm/kvm.c b/target/i386/kvm/kvm.c
+index 2ff618fbf1..a7bdb35a1e 100644
+--- a/target/i386/kvm/kvm.c
++++ b/target/i386/kvm/kvm.c
+@@ -2617,10 +2617,7 @@ static bool kvm_rdmsr_core_thread_count(X86CPU *cpu,
+                                         uint32_t msr,
+                                         uint64_t *val)
+ {
+-    CPUState *cs = CPU(cpu);
+-
+-    *val = cs->nr_threads * cs->nr_cores; /* thread count, bits 15..0 */
+-    *val |= ((uint32_t)cs->nr_cores << 16); /* core count, bits 31..16 */
++    *val = cpu_x86_get_msr_core_thread_count(cpu);
+ 
+     return true;
+ }
+diff --git a/target/i386/tcg/sysemu/misc_helper.c b/target/i386/tcg/sysemu/misc_helper.c
+index 094aa56a20..ff7b201b44 100644
+--- a/target/i386/tcg/sysemu/misc_helper.c
++++ b/target/i386/tcg/sysemu/misc_helper.c
+@@ -468,8 +468,7 @@ void helper_rdmsr(CPUX86State *env)
+         val = x86_cpu->ucode_rev;
+         break;
+     case MSR_CORE_THREAD_COUNT: {
+-        CPUState *cs = CPU(x86_cpu);
+-        val = (cs->nr_threads * cs->nr_cores) | (cs->nr_cores << 16);
++        val = cpu_x86_get_msr_core_thread_count(x86_cpu);
+         break;
+     }
+     case MSR_APIC_START ... MSR_APIC_END: {
+-- 
+2.25.1
+

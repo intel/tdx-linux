@@ -1,0 +1,94 @@
+From 73a9916ad37b20cba8a8953c649d8059452a20d9 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Tue, 14 Dec 2021 13:49:25 +0800
+Subject: [PATCH 18/71] i386/tdx: Introduce is_tdx_vm() helper and cache
+ tdx_guest object
+
+It will need special handling for TDX VMs all around the QEMU.
+Introduce is_tdx_vm() helper to query if it's a TDX VM.
+
+Cache tdx_guest object thus no need to cast from ms->cgs every time.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+Reviewed-by: Isaku Yamahata <isaku.yamahata@intel.com>
+---
+changes in v3:
+- replace object_dynamic_cast with TDX_GUEST();
+---
+ target/i386/kvm/tdx.c | 15 ++++++++++++++-
+ target/i386/kvm/tdx.h | 10 ++++++++++
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index bd212abab8..53eec65533 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -18,8 +18,16 @@
+ #include "kvm_i386.h"
+ #include "tdx.h"
+ 
++static TdxGuest *tdx_guest;
++
+ static struct kvm_tdx_capabilities *tdx_caps;
+ 
++/* Valid after kvm_arch_init()->confidential_guest_kvm_init()->tdx_kvm_init() */
++bool is_tdx_vm(void)
++{
++    return !!tdx_guest;
++}
++
+ enum tdx_ioctl_level {
+     TDX_VM_IOCTL,
+     TDX_VCPU_IOCTL,
+@@ -117,15 +125,20 @@ static int get_tdx_capabilities(Error **errp)
+ 
+ static int tdx_kvm_init(ConfidentialGuestSupport *cgs, Error **errp)
+ {
++    TdxGuest *tdx = TDX_GUEST(cgs);
+     int r = 0;
+ 
+     kvm_mark_guest_state_protected();
+ 
+     if (!tdx_caps) {
+         r = get_tdx_capabilities(errp);
++        if (r) {
++            return r;
++        }
+     }
+ 
+-    return r;
++    tdx_guest = tdx;
++    return 0;
+ }
+ 
+ static int tdx_kvm_type(X86ConfidentialGuest *cg)
+diff --git a/target/i386/kvm/tdx.h b/target/i386/kvm/tdx.h
+index f3b7253361..de8ae91961 100644
+--- a/target/i386/kvm/tdx.h
++++ b/target/i386/kvm/tdx.h
+@@ -3,6 +3,10 @@
+ #ifndef QEMU_I386_TDX_H
+ #define QEMU_I386_TDX_H
+ 
++#ifndef CONFIG_USER_ONLY
++#include CONFIG_DEVICES /* CONFIG_TDX */
++#endif
++
+ #include "confidential-guest.h"
+ 
+ #define TYPE_TDX_GUEST "tdx-guest"
+@@ -18,4 +22,10 @@ typedef struct TdxGuest {
+     uint64_t attributes;    /* TD attributes */
+ } TdxGuest;
+ 
++#ifdef CONFIG_TDX
++bool is_tdx_vm(void);
++#else
++#define is_tdx_vm() 0
++#endif /* CONFIG_TDX */
++
+ #endif /* QEMU_I386_TDX_H */
+-- 
+2.25.1
+

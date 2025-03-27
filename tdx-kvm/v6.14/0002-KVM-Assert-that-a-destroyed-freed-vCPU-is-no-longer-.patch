@@ -1,0 +1,48 @@
+From ae8a5d7511b71c8a1c5d5dd5714cde7aa66fa4ab Mon Sep 17 00:00:00 2001
+From: Sean Christopherson <seanjc@google.com>
+Date: Mon, 24 Feb 2025 15:55:38 -0800
+Subject: [PATCH 002/130] KVM: Assert that a destroyed/freed vCPU is no longer
+ visible
+
+After freeing a vCPU, assert that it is no longer reachable, and that
+kvm_get_vcpu() doesn't return garbage or a pointer to some other vCPU.
+While KVM obviously shouldn't be attempting to access a freed vCPU, it's
+all too easy for KVM to make a VM-wide request, e.g. via KVM_BUG_ON() or
+kvm_flush_remote_tlbs().
+
+Alternatively, KVM could short-circuit problematic paths if the VM's
+refcount has gone to zero, e.g. in kvm_make_all_cpus_request(), or KVM
+could try disallow making global requests during teardown.  But given that
+deleting the vCPU from the array Just Works, adding logic to the requests
+path is unnecessary, and trying to make requests illegal during teardown
+would be a fool's errand.
+
+Signed-off-by: Sean Christopherson <seanjc@google.com>
+Message-ID: <20250224235542.2562848-4-seanjc@google.com>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ virt/kvm/kvm_main.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
+index ba0327e2d0d3..28ba54b87425 100644
+--- a/virt/kvm/kvm_main.c
++++ b/virt/kvm/kvm_main.c
+@@ -489,6 +489,14 @@ void kvm_destroy_vcpus(struct kvm *kvm)
+ 	kvm_for_each_vcpu(i, vcpu, kvm) {
+ 		kvm_vcpu_destroy(vcpu);
+ 		xa_erase(&kvm->vcpu_array, i);
++
++		/*
++		 * Assert that the vCPU isn't visible in any way, to ensure KVM
++		 * doesn't trigger a use-after-free if destroying vCPUs results
++		 * in VM-wide request, e.g. to flush remote TLBs when tearing
++		 * down MMUs, or to mark the VM dead if a KVM_BUG_ON() fires.
++		 */
++		WARN_ON_ONCE(xa_load(&kvm->vcpu_array, i) || kvm_get_vcpu(kvm, i));
+ 	}
+ 
+ 	atomic_set(&kvm->online_vcpus, 0);
+-- 
+2.25.1
+

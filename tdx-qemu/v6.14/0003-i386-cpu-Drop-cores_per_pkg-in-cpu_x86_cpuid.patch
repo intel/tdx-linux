@@ -1,0 +1,43 @@
+From 24d6a887bf49f5e0ebbde7a7c0abf4dd148c4d29 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 19 Dec 2024 06:01:18 -0500
+Subject: [PATCH 03/71] i386/cpu: Drop cores_per_pkg in cpu_x86_cpuid()
+
+Local variable cores_per_pkg is only used to calculate threads_per_pkg.
+No need for it. Drop it and open-code it instead.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Reviewed-by: Zhao Liu <zhao1.liu@intel.com>
+Link: https://lore.kernel.org/r/20241219110125.1266461-4-xiaoyao.li@intel.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ target/i386/cpu.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index 348771bd74..126f1e7e2b 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -6499,7 +6499,6 @@ void cpu_x86_cpuid(CPUX86State *env, uint32_t index, uint32_t count,
+     uint32_t limit;
+     uint32_t signature[3];
+     X86CPUTopoInfo topo_info;
+-    uint32_t cores_per_pkg;
+     uint32_t threads_per_pkg;
+ 
+     topo_info.dies_per_pkg = env->nr_dies;
+@@ -6507,9 +6506,8 @@ void cpu_x86_cpuid(CPUX86State *env, uint32_t index, uint32_t count,
+     topo_info.cores_per_module = cs->nr_cores / env->nr_dies / env->nr_modules;
+     topo_info.threads_per_core = cs->nr_threads;
+ 
+-    cores_per_pkg = topo_info.cores_per_module * topo_info.modules_per_die *
+-                    topo_info.dies_per_pkg;
+-    threads_per_pkg = cores_per_pkg * topo_info.threads_per_core;
++    threads_per_pkg = topo_info.threads_per_core * topo_info.cores_per_module *
++                      topo_info.modules_per_die * topo_info.dies_per_pkg;
+ 
+     /* Calculate & apply limits for different index ranges */
+     if (index >= 0xC0000000) {
+-- 
+2.25.1
+

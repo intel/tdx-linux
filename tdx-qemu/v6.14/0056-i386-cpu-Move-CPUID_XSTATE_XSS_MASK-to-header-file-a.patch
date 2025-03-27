@@ -1,0 +1,47 @@
+From f7ad3d3bd2c54a6453634fc1233d0b27d41fe895 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Tue, 3 Sep 2024 22:46:42 -0400
+Subject: [PATCH 56/71] i386/cpu: Move CPUID_XSTATE_XSS_MASK to header file and
+ introduce CPUID_XSTATE_MASK
+
+They will be used by TDX.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+ target/i386/cpu.c | 3 ---
+ target/i386/cpu.h | 5 +++++
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index 7e86bca763..158742b318 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -1828,9 +1828,6 @@ static const X86RegisterInfo32 x86_reg_info_32[CPU_NB_REGS32] = {
+ };
+ #undef REGISTER
+ 
+-/* CPUID feature bits available in XSS */
+-#define CPUID_XSTATE_XSS_MASK    (XSTATE_ARCH_LBR_MASK)
+-
+ ExtSaveArea x86_ext_save_areas[XSAVE_STATE_AREA_COUNT] = {
+     [XSTATE_FP_BIT] = {
+         /* x87 FP state component is always enabled if XSAVE is supported */
+diff --git a/target/i386/cpu.h b/target/i386/cpu.h
+index 2558a301e5..04cfe555af 100644
+--- a/target/i386/cpu.h
++++ b/target/i386/cpu.h
+@@ -622,6 +622,11 @@ typedef enum X86Seg {
+                                  XSTATE_Hi16_ZMM_MASK | XSTATE_PKRU_MASK | \
+                                  XSTATE_XTILE_CFG_MASK | XSTATE_XTILE_DATA_MASK)
+ 
++/* CPUID feature bits available in XSS */
++#define CPUID_XSTATE_XSS_MASK    (XSTATE_ARCH_LBR_MASK)
++
++#define CPUID_XSTATE_MASK       (CPUID_XSTATE_XCR0_MASK | CPUID_XSTATE_XSS_MASK)
++
+ /* CPUID feature words */
+ typedef enum FeatureWord {
+     FEAT_1_EDX,         /* CPUID[1].EDX */
+-- 
+2.25.1
+

@@ -1,0 +1,103 @@
+From d60889b2a3935ca2946a8909595b211d7ec1b8e2 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 7 Dec 2023 02:29:16 -0500
+Subject: [PATCH 21/71] i386/tdx: Add property sept-ve-disable for tdx-guest
+ object
+
+Bit 28 of TD attribute, named SEPT_VE_DISABLE. When set to 1, it disables
+EPT violation conversion to #VE on guest TD access of PENDING pages.
+
+Some guest OS (e.g., Linux TD guest) may require this bit as 1.
+Otherwise refuse to boot.
+
+Add sept-ve-disable property for tdx-guest object, for user to configure
+this bit.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+Acked-by: Markus Armbruster <armbru@redhat.com>
+---
+Changes in v4:
+- collect Acked-by from Markus
+
+Changes in v3:
+- update the comment of property @sept-ve-disable to make it more
+  descriptive and use new format. (Daniel and Markus)
+---
+ qapi/qom.json         |  8 +++++++-
+ target/i386/kvm/tdx.c | 23 +++++++++++++++++++++++
+ 2 files changed, 30 insertions(+), 1 deletion(-)
+
+diff --git a/qapi/qom.json b/qapi/qom.json
+index e3a5e9330b..8740626c4e 100644
+--- a/qapi/qom.json
++++ b/qapi/qom.json
+@@ -1055,10 +1055,16 @@
+ # @attributes: The 'attributes' of a TD guest that is passed to
+ #     KVM_TDX_INIT_VM
+ #
++# @sept-ve-disable: toggle bit 28 of TD attributes to control disabling
++#     of EPT violation conversion to #VE on guest TD access of PENDING
++#     pages.  Some guest OS (e.g., Linux TD guest) may require this to
++#     be set, otherwise they refuse to boot.
++#
+ # Since: 10.0
+ ##
+ { 'struct': 'TdxGuestProperties',
+-  'data': { '*attributes': 'uint64' } }
++  'data': { '*attributes': 'uint64',
++            '*sept-ve-disable': 'bool' } }
+ 
+ ##
+ # @ThreadContextProperties:
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index b8a85f2333..214ff7409e 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -18,6 +18,8 @@
+ #include "kvm_i386.h"
+ #include "tdx.h"
+ 
++#define TDX_TD_ATTRIBUTES_SEPT_VE_DISABLE   BIT_ULL(28)
++
+ static TdxGuest *tdx_guest;
+ 
+ static struct kvm_tdx_capabilities *tdx_caps;
+@@ -250,6 +252,24 @@ int tdx_pre_create_vcpu(CPUState *cpu, Error **errp)
+     return 0;
+ }
+ 
++static bool tdx_guest_get_sept_ve_disable(Object *obj, Error **errp)
++{
++    TdxGuest *tdx = TDX_GUEST(obj);
++
++    return !!(tdx->attributes & TDX_TD_ATTRIBUTES_SEPT_VE_DISABLE);
++}
++
++static void tdx_guest_set_sept_ve_disable(Object *obj, bool value, Error **errp)
++{
++    TdxGuest *tdx = TDX_GUEST(obj);
++
++    if (value) {
++        tdx->attributes |= TDX_TD_ATTRIBUTES_SEPT_VE_DISABLE;
++    } else {
++        tdx->attributes &= ~TDX_TD_ATTRIBUTES_SEPT_VE_DISABLE;
++    }
++}
++
+ /* tdx guest */
+ OBJECT_DEFINE_TYPE_WITH_INTERFACES(TdxGuest,
+                                    tdx_guest,
+@@ -270,6 +290,9 @@ static void tdx_guest_init(Object *obj)
+ 
+     object_property_add_uint64_ptr(obj, "attributes", &tdx->attributes,
+                                    OBJ_PROP_FLAG_READWRITE);
++    object_property_add_bool(obj, "sept-ve-disable",
++                             tdx_guest_get_sept_ve_disable,
++                             tdx_guest_set_sept_ve_disable);
+ }
+ 
+ static void tdx_guest_finalize(Object *obj)
+-- 
+2.25.1
+

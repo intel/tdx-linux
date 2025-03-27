@@ -1,0 +1,92 @@
+From c6ec14f6134f950853fefda4c1f4e9c41a3e205d Mon Sep 17 00:00:00 2001
+From: Chao Peng <chao.p.peng@linux.intel.com>
+Date: Fri, 2 Jun 2023 18:36:53 -0700
+Subject: [PATCH 27/71] i386/tdx: load TDVF for TD guest
+
+TDVF(OVMF) needs to run at private memory for TD guest. TDX cannot
+support pflash device since it doesn't support read-only private memory.
+Thus load TDVF(OVMF) with -bios option for TDs.
+
+Use memory_region_init_ram_guest_memfd() to allocate the MemoryRegion
+for TDVF because it needs to be located at private memory.
+
+Also store the MemoryRegion pointer of TDVF since the shared ramblock of
+it can be discared after it gets copied to private ramblock.
+
+Signed-off-by: Chao Peng <chao.p.peng@linux.intel.com>
+Co-developed-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+ hw/i386/x86-common.c  | 6 +++++-
+ target/i386/kvm/tdx.c | 6 ++++++
+ target/i386/kvm/tdx.h | 3 +++
+ 3 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/hw/i386/x86-common.c b/hw/i386/x86-common.c
+index e0a802d1d7..222a2ad4f6 100644
+--- a/hw/i386/x86-common.c
++++ b/hw/i386/x86-common.c
+@@ -44,6 +44,7 @@
+ #include "standard-headers/asm-x86/bootparam.h"
+ #include CONFIG_DEVICES
+ #include "kvm/kvm_i386.h"
++#include "kvm/tdx.h"
+ 
+ #ifdef CONFIG_XEN_EMU
+ #include "hw/xen/xen.h"
+@@ -1005,11 +1006,14 @@ void x86_bios_rom_init(X86MachineState *x86ms, const char *default_firmware,
+     if (machine_require_guest_memfd(MACHINE(x86ms))) {
+         memory_region_init_ram_guest_memfd(&x86ms->bios, NULL, "pc.bios",
+                                            bios_size, &error_fatal);
++        if (is_tdx_vm()) {
++            tdx_set_tdvf_region(&x86ms->bios);
++        }
+     } else {
+         memory_region_init_ram(&x86ms->bios, NULL, "pc.bios",
+                                bios_size, &error_fatal);
+     }
+-    if (sev_enabled()) {
++    if (sev_enabled() || is_tdx_vm()) {
+         /*
+          * The concept of a "reset" simply doesn't exist for
+          * confidential computing guests, we have to destroy and
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index 2124284e16..f1c0553e6d 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -137,6 +137,12 @@ static int get_tdx_capabilities(Error **errp)
+     return 0;
+ }
+ 
++void tdx_set_tdvf_region(MemoryRegion *tdvf_mr)
++{
++    assert(!tdx_guest->tdvf_mr);
++    tdx_guest->tdvf_mr = tdvf_mr;
++}
++
+ static int tdx_kvm_init(ConfidentialGuestSupport *cgs, Error **errp)
+ {
+     TdxGuest *tdx = TDX_GUEST(cgs);
+diff --git a/target/i386/kvm/tdx.h b/target/i386/kvm/tdx.h
+index d39e733d9f..b73461b8d8 100644
+--- a/target/i386/kvm/tdx.h
++++ b/target/i386/kvm/tdx.h
+@@ -30,6 +30,8 @@ typedef struct TdxGuest {
+     char *mrconfigid;       /* base64 encoded sha348 digest */
+     char *mrowner;          /* base64 encoded sha348 digest */
+     char *mrownerconfig;    /* base64 encoded sha348 digest */
++
++    MemoryRegion *tdvf_mr;
+ } TdxGuest;
+ 
+ #ifdef CONFIG_TDX
+@@ -39,5 +41,6 @@ bool is_tdx_vm(void);
+ #endif /* CONFIG_TDX */
+ 
+ int tdx_pre_create_vcpu(CPUState *cpu, Error **errp);
++void tdx_set_tdvf_region(MemoryRegion *tdvf_mr);
+ 
+ #endif /* QEMU_I386_TDX_H */
+-- 
+2.25.1
+

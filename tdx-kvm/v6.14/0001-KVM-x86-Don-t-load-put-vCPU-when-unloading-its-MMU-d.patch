@@ -1,0 +1,48 @@
+From 5384ff0d6cca95991d93a4bad55b2f6c88ba42d7 Mon Sep 17 00:00:00 2001
+From: Sean Christopherson <seanjc@google.com>
+Date: Mon, 24 Feb 2025 15:55:39 -0800
+Subject: [PATCH 001/130] KVM: x86: Don't load/put vCPU when unloading its MMU
+ during teardown
+
+Don't load (and then put) a vCPU when unloading its MMU during VM
+destruction, as nothing in kvm_mmu_unload() accesses vCPU state beyond the
+root page/address of each MMU, i.e. can't possible need to run with the
+vCPU loaded.
+
+Signed-off-by: Sean Christopherson <seanjc@google.com>
+Message-ID: <20250224235542.2562848-5-seanjc@google.com>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ arch/x86/kvm/x86.c | 9 +--------
+ 1 file changed, 1 insertion(+), 8 deletions(-)
+
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index 4b64ab350bcd..a80a588b567e 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -12756,13 +12756,6 @@ int kvm_arch_init_vm(struct kvm *kvm, unsigned long type)
+ 	return ret;
+ }
+ 
+-static void kvm_unload_vcpu_mmu(struct kvm_vcpu *vcpu)
+-{
+-	vcpu_load(vcpu);
+-	kvm_mmu_unload(vcpu);
+-	vcpu_put(vcpu);
+-}
+-
+ static void kvm_unload_vcpu_mmus(struct kvm *kvm)
+ {
+ 	unsigned long i;
+@@ -12770,7 +12763,7 @@ static void kvm_unload_vcpu_mmus(struct kvm *kvm)
+ 
+ 	kvm_for_each_vcpu(i, vcpu, kvm) {
+ 		kvm_clear_async_pf_completion_queue(vcpu);
+-		kvm_unload_vcpu_mmu(vcpu);
++		kvm_mmu_unload(vcpu);
+ 	}
+ }
+ 
+-- 
+2.25.1
+

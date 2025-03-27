@@ -1,0 +1,212 @@
+From ca9cbcffddfd6610fce4d6cca75fc577dac85ec8 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 9 Dec 2021 16:55:40 +0800
+Subject: [PATCH 14/71] i386: Introduce tdx-guest object
+
+Introduce tdx-guest object which inherits X86_CONFIDENTIAL_GUEST,
+and will be used to create TDX VMs (TDs) by
+
+  qemu -machine ...,confidential-guest-support=tdx0	\
+       -object tdx-guest,id=tdx0
+
+It has one QAPI member 'attributes' defined, which allows user to set
+TD's attributes directly.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+Acked-by: Markus Armbruster <armbru@redhat.com>
+---
+Changes in v7:
+ - update QAPI version to 10.0;
+ - update to use SPDX tags for license info;
+ - update copyright to 2025;
+
+Chanegs in v6:
+ - Make tdx-guest inherits X86_CONFIDENTIAL_GUEST;
+ - set cgs->require_guest_memfd;
+ - allow attributes settable via QAPI;
+ - update QAPI version to since 9.2;
+
+Changes in v4:
+ - update the new qapi `since` filed from 8.2 to 9.0
+
+Changes in v1
+ - make @attributes not user-settable
+---
+ configs/devices/i386-softmmu/default.mak |  1 +
+ hw/i386/Kconfig                          |  5 +++
+ qapi/qom.json                            | 15 +++++++++
+ target/i386/kvm/meson.build              |  2 ++
+ target/i386/kvm/tdx.c                    | 43 ++++++++++++++++++++++++
+ target/i386/kvm/tdx.h                    | 21 ++++++++++++
+ 6 files changed, 87 insertions(+)
+ create mode 100644 target/i386/kvm/tdx.c
+ create mode 100644 target/i386/kvm/tdx.h
+
+diff --git a/configs/devices/i386-softmmu/default.mak b/configs/devices/i386-softmmu/default.mak
+index 4faf2f0315..bc0479a7e0 100644
+--- a/configs/devices/i386-softmmu/default.mak
++++ b/configs/devices/i386-softmmu/default.mak
+@@ -18,6 +18,7 @@
+ #CONFIG_QXL=n
+ #CONFIG_SEV=n
+ #CONFIG_SGA=n
++#CONFIG_TDX=n
+ #CONFIG_TEST_DEVICES=n
+ #CONFIG_TPM_CRB=n
+ #CONFIG_TPM_TIS_ISA=n
+diff --git a/hw/i386/Kconfig b/hw/i386/Kconfig
+index 32818480d2..86bc10377c 100644
+--- a/hw/i386/Kconfig
++++ b/hw/i386/Kconfig
+@@ -10,6 +10,10 @@ config SGX
+     bool
+     depends on KVM
+ 
++config TDX
++    bool
++    depends on KVM
++
+ config PC
+     bool
+     imply APPLESMC
+@@ -26,6 +30,7 @@ config PC
+     imply QXL
+     imply SEV
+     imply SGX
++    imply TDX
+     imply TEST_DEVICES
+     imply TPM_CRB
+     imply TPM_TIS_ISA
+diff --git a/qapi/qom.json b/qapi/qom.json
+index 28ce24cd8d..e3a5e9330b 100644
+--- a/qapi/qom.json
++++ b/qapi/qom.json
+@@ -1047,6 +1047,19 @@
+             '*host-data': 'str',
+             '*vcek-disabled': 'bool' } }
+ 
++##
++# @TdxGuestProperties:
++#
++# Properties for tdx-guest objects.
++#
++# @attributes: The 'attributes' of a TD guest that is passed to
++#     KVM_TDX_INIT_VM
++#
++# Since: 10.0
++##
++{ 'struct': 'TdxGuestProperties',
++  'data': { '*attributes': 'uint64' } }
++
+ ##
+ # @ThreadContextProperties:
+ #
+@@ -1132,6 +1145,7 @@
+     'sev-snp-guest',
+     'thread-context',
+     's390-pv-guest',
++    'tdx-guest',
+     'throttle-group',
+     'tls-creds-anon',
+     'tls-creds-psk',
+@@ -1204,6 +1218,7 @@
+                                       'if': 'CONFIG_SECRET_KEYRING' },
+       'sev-guest':                  'SevGuestProperties',
+       'sev-snp-guest':              'SevSnpGuestProperties',
++      'tdx-guest':                  'TdxGuestProperties',
+       'thread-context':             'ThreadContextProperties',
+       'throttle-group':             'ThrottleGroupProperties',
+       'tls-creds-anon':             'TlsCredsAnonProperties',
+diff --git a/target/i386/kvm/meson.build b/target/i386/kvm/meson.build
+index 3996cafaf2..466bccb9cb 100644
+--- a/target/i386/kvm/meson.build
++++ b/target/i386/kvm/meson.build
+@@ -8,6 +8,8 @@ i386_kvm_ss.add(files(
+ 
+ i386_kvm_ss.add(when: 'CONFIG_XEN_EMU', if_true: files('xen-emu.c'))
+ 
++i386_kvm_ss.add(when: 'CONFIG_TDX', if_true: files('tdx.c'))
++
+ i386_system_ss.add(when: 'CONFIG_HYPERV', if_true: files('hyperv.c'), if_false: files('hyperv-stub.c'))
+ 
+ i386_system_ss.add_all(when: 'CONFIG_KVM', if_true: i386_kvm_ss)
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+new file mode 100644
+index 0000000000..ec84ae2947
+--- /dev/null
++++ b/target/i386/kvm/tdx.c
+@@ -0,0 +1,43 @@
++/*
++ * QEMU TDX support
++ *
++ * Copyright (c) 2025 Intel Corporation
++ *
++ * Author:
++ *      Xiaoyao Li <xiaoyao.li@intel.com>
++ *
++ * SPDX-License-Identifier: GPL-2.0-or-later
++ */
++
++#include "qemu/osdep.h"
++#include "qom/object_interfaces.h"
++
++#include "tdx.h"
++
++/* tdx guest */
++OBJECT_DEFINE_TYPE_WITH_INTERFACES(TdxGuest,
++                                   tdx_guest,
++                                   TDX_GUEST,
++                                   X86_CONFIDENTIAL_GUEST,
++                                   { TYPE_USER_CREATABLE },
++                                   { NULL })
++
++static void tdx_guest_init(Object *obj)
++{
++    ConfidentialGuestSupport *cgs = CONFIDENTIAL_GUEST_SUPPORT(obj);
++    TdxGuest *tdx = TDX_GUEST(obj);
++
++    cgs->require_guest_memfd = true;
++    tdx->attributes = 0;
++
++    object_property_add_uint64_ptr(obj, "attributes", &tdx->attributes,
++                                   OBJ_PROP_FLAG_READWRITE);
++}
++
++static void tdx_guest_finalize(Object *obj)
++{
++}
++
++static void tdx_guest_class_init(ObjectClass *oc, void *data)
++{
++}
+diff --git a/target/i386/kvm/tdx.h b/target/i386/kvm/tdx.h
+new file mode 100644
+index 0000000000..f3b7253361
+--- /dev/null
++++ b/target/i386/kvm/tdx.h
+@@ -0,0 +1,21 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++
++#ifndef QEMU_I386_TDX_H
++#define QEMU_I386_TDX_H
++
++#include "confidential-guest.h"
++
++#define TYPE_TDX_GUEST "tdx-guest"
++#define TDX_GUEST(obj)  OBJECT_CHECK(TdxGuest, (obj), TYPE_TDX_GUEST)
++
++typedef struct TdxGuestClass {
++    X86ConfidentialGuestClass parent_class;
++} TdxGuestClass;
++
++typedef struct TdxGuest {
++    X86ConfidentialGuest parent_obj;
++
++    uint64_t attributes;    /* TD attributes */
++} TdxGuest;
++
++#endif /* QEMU_I386_TDX_H */
+-- 
+2.25.1
+

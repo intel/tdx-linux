@@ -1,0 +1,79 @@
+From e80287f742e0f3d18932b42b6acea8e238e7eabe Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Fri, 3 Apr 2020 11:21:22 +0800
+Subject: [PATCH 16/71] i386/tdx: Implement tdx_kvm_init() to initialize TDX VM
+ context
+
+Implement TDX specific ConfidentialGuestSupportClass::kvm_init()
+callback, tdx_kvm_init().
+
+Mark guest state is proctected for TDX VM.  More TDX specific
+initialization will be added later.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+Changes in v6:
+ - remove Acked-by from Gerd since the patch changed due to use
+   ConfidentialGuestSupportClass::kvm_init();
+---
+ target/i386/kvm/kvm.c | 11 +----------
+ target/i386/kvm/tdx.c | 10 ++++++++++
+ 2 files changed, 11 insertions(+), 10 deletions(-)
+
+diff --git a/target/i386/kvm/kvm.c b/target/i386/kvm/kvm.c
+index 813552739f..e65022cec2 100644
+--- a/target/i386/kvm/kvm.c
++++ b/target/i386/kvm/kvm.c
+@@ -3216,16 +3216,7 @@ int kvm_arch_init(MachineState *ms, KVMState *s)
+     Error *local_err = NULL;
+ 
+     /*
+-     * Initialize SEV context, if required
+-     *
+-     * If no memory encryption is requested (ms->cgs == NULL) this is
+-     * a no-op.
+-     *
+-     * It's also a no-op if a non-SEV confidential guest support
+-     * mechanism is selected.  SEV is the only mechanism available to
+-     * select on x86 at present, so this doesn't arise, but if new
+-     * mechanisms are supported in future (e.g. TDX), they'll need
+-     * their own initialization either here or elsewhere.
++     * Initialize confidential guest (SEV/TDX) context, if required
+      */
+     if (ms->cgs) {
+         ret = confidential_guest_kvm_init(ms->cgs, &local_err);
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index d785c1f6d1..4ff9486081 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -12,9 +12,17 @@
+ #include "qemu/osdep.h"
+ #include "qom/object_interfaces.h"
+ 
++#include "hw/i386/x86.h"
+ #include "kvm_i386.h"
+ #include "tdx.h"
+ 
++static int tdx_kvm_init(ConfidentialGuestSupport *cgs, Error **errp)
++{
++    kvm_mark_guest_state_protected();
++
++    return 0;
++}
++
+ static int tdx_kvm_type(X86ConfidentialGuest *cg)
+ {
+     /* Do the object check */
+@@ -49,7 +57,9 @@ static void tdx_guest_finalize(Object *obj)
+ 
+ static void tdx_guest_class_init(ObjectClass *oc, void *data)
+ {
++    ConfidentialGuestSupportClass *klass = CONFIDENTIAL_GUEST_SUPPORT_CLASS(oc);
+     X86ConfidentialGuestClass *x86_klass = X86_CONFIDENTIAL_GUEST_CLASS(oc);
+ 
++    klass->kvm_init = tdx_kvm_init;
+     x86_klass->kvm_type = tdx_kvm_type;
+ }
+-- 
+2.25.1
+

@@ -1,0 +1,115 @@
+From 57c325f1dd7340066383cfe9b3a895f4125a648e Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Tue, 17 Jan 2023 22:31:52 +0800
+Subject: [PATCH 39/71] i386/tdx: Handle KVM_SYSTEM_EVENT_TDX_FATAL
+
+TD guest can use TDG.VP.VMCALL<REPORT_FATAL_ERROR> to request
+termination. KVM translates such request into KVM_EXIT_SYSTEM_EVENT with
+type of KVM_SYSTEM_EVENT_TDX_FATAL.
+
+Add hanlder for such exit. Parse and print the error message, and
+terminate the TD guest in the handler.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+Changes in v6:
+ - replace the patch " i386/tdx: Handle TDG.VP.VMCALL<REPORT_FATAL_ERROR>"
+   in v5;
+---
+ target/i386/kvm/kvm.c      | 10 ++++++++++
+ target/i386/kvm/tdx-stub.c |  5 +++++
+ target/i386/kvm/tdx.c      | 24 ++++++++++++++++++++++++
+ target/i386/kvm/tdx.h      |  2 ++
+ 4 files changed, 41 insertions(+)
+
+diff --git a/target/i386/kvm/kvm.c b/target/i386/kvm/kvm.c
+index 138341a5cf..9d4ca7af22 100644
+--- a/target/i386/kvm/kvm.c
++++ b/target/i386/kvm/kvm.c
+@@ -6128,6 +6128,16 @@ int kvm_arch_handle_exit(CPUState *cs, struct kvm_run *run)
+     case KVM_EXIT_HYPERCALL:
+         ret = kvm_handle_hypercall(run);
+         break;
++    case KVM_EXIT_SYSTEM_EVENT:
++        switch (run->system_event.type) {
++        case KVM_SYSTEM_EVENT_TDX_FATAL:
++            ret = tdx_handle_report_fatal_error(cpu, run);
++            break;
++        default:
++            ret = -1;
++            break;
++        }
++        break;
+     default:
+         fprintf(stderr, "KVM: unknown exit reason %d\n", run->exit_reason);
+         ret = -1;
+diff --git a/target/i386/kvm/tdx-stub.c b/target/i386/kvm/tdx-stub.c
+index 7748b6d0a4..720a4ff046 100644
+--- a/target/i386/kvm/tdx-stub.c
++++ b/target/i386/kvm/tdx-stub.c
+@@ -13,3 +13,8 @@ int tdx_parse_tdvf(void *flash_ptr, int size)
+ {
+     return -EINVAL;
+ }
++
++int tdx_handle_report_fatal_error(X86CPU *cpu, struct kvm_run *run)
++{
++    return -EINVAL;
++}
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index e6ae6a924a..2efc662b82 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -601,6 +601,30 @@ int tdx_parse_tdvf(void *flash_ptr, int size)
+     return tdvf_parse_metadata(&tdx_guest->tdvf, flash_ptr, size);
+ }
+ 
++int tdx_handle_report_fatal_error(X86CPU *cpu, struct kvm_run *run)
++{
++    uint64_t error_code = run->system_event.data[0];
++    char *message = NULL;
++
++    if (error_code & 0xffff) {
++        error_report("TDX: REPORT_FATAL_ERROR: invalid error code: 0x%lx",
++                     error_code);
++        return -1;
++    }
++
++    /* It has optional message */
++    if (run->system_event.data[2]) {
++#define TDX_FATAL_MESSAGE_MAX        64
++        message = g_malloc0(TDX_FATAL_MESSAGE_MAX + 1);
++
++        memcpy(message, &run->system_event.data[2], TDX_FATAL_MESSAGE_MAX);
++        message[TDX_FATAL_MESSAGE_MAX] = '\0';
++    }
++
++    error_report("TD guest reports fatal error. %s", message ? : "");
++    return -1;
++}
++
+ static bool tdx_guest_get_sept_ve_disable(Object *obj, Error **errp)
+ {
+     TdxGuest *tdx = TDX_GUEST(obj);
+diff --git a/target/i386/kvm/tdx.h b/target/i386/kvm/tdx.h
+index 36a7400e74..04b5afe199 100644
+--- a/target/i386/kvm/tdx.h
++++ b/target/i386/kvm/tdx.h
+@@ -8,6 +8,7 @@
+ #endif
+ 
+ #include "confidential-guest.h"
++#include "cpu.h"
+ #include "hw/i386/tdvf.h"
+ 
+ #define TYPE_TDX_GUEST "tdx-guest"
+@@ -59,5 +60,6 @@ bool is_tdx_vm(void);
+ int tdx_pre_create_vcpu(CPUState *cpu, Error **errp);
+ void tdx_set_tdvf_region(MemoryRegion *tdvf_mr);
+ int tdx_parse_tdvf(void *flash_ptr, int size);
++int tdx_handle_report_fatal_error(X86CPU *cpu, struct kvm_run *run);
+ 
+ #endif /* QEMU_I386_TDX_H */
+-- 
+2.25.1
+

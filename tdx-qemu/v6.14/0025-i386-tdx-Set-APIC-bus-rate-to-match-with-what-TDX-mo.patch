@@ -1,0 +1,64 @@
+From b91d6ff0814dd3c344e9523d8a459bc8f36cc851 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Wed, 28 Feb 2024 01:52:58 -0500
+Subject: [PATCH 25/71] i386/tdx: Set APIC bus rate to match with what TDX
+ module enforces
+
+TDX advertises core crystal clock with cpuid[0x15] as 25MHz for TD
+guests and it's unchangeable from VMM. As a result, TDX guest reads
+the APIC timer as the same frequency, 25MHz.
+
+While KVM's default emulated frequency for APIC bus is 1GHz, set the
+APIC bus rate to match with TDX explicitly to ensure KVM provide correct
+emulated APIC timer for TD guest.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+Changes in v6:
+ - new patch;
+---
+ target/i386/kvm/tdx.c | 13 +++++++++++++
+ target/i386/kvm/tdx.h |  3 +++
+ 2 files changed, 16 insertions(+)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index ed843af1d0..96138c2d2b 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -253,6 +253,19 @@ int tdx_pre_create_vcpu(CPUState *cpu, Error **errp)
+     init_vm = g_malloc0(sizeof(struct kvm_tdx_init_vm) +
+                         sizeof(struct kvm_cpuid_entry2) * KVM_MAX_CPUID_ENTRIES);
+ 
++    if (!kvm_check_extension(kvm_state, KVM_CAP_X86_APIC_BUS_CYCLES_NS)) {
++        error_setg(errp, "KVM doesn't support KVM_CAP_X86_APIC_BUS_CYCLES_NS");
++        return -EOPNOTSUPP;
++    }
++
++    r = kvm_vm_enable_cap(kvm_state, KVM_CAP_X86_APIC_BUS_CYCLES_NS,
++                          0, TDX_APIC_BUS_CYCLES_NS);
++    if (r < 0) {
++        error_setg_errno(errp, -r,
++                         "Unable to set core crystal clock frequency to 25MHz");
++        return r;
++    }
++
+     if (tdx_guest->mrconfigid) {
+         g_autofree uint8_t *data = qbase64_decode(tdx_guest->mrconfigid,
+                               strlen(tdx_guest->mrconfigid), &data_len, errp);
+diff --git a/target/i386/kvm/tdx.h b/target/i386/kvm/tdx.h
+index e472b11fb0..d39e733d9f 100644
+--- a/target/i386/kvm/tdx.h
++++ b/target/i386/kvm/tdx.h
+@@ -16,6 +16,9 @@ typedef struct TdxGuestClass {
+     X86ConfidentialGuestClass parent_class;
+ } TdxGuestClass;
+ 
++/* TDX requires bus frequency 25MHz */
++#define TDX_APIC_BUS_CYCLES_NS 40
++
+ typedef struct TdxGuest {
+     X86ConfidentialGuest parent_obj;
+ 
+-- 
+2.25.1
+

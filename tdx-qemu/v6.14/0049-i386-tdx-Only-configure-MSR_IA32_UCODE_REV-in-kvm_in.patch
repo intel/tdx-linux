@@ -1,0 +1,79 @@
+From eb8ab2865a02e87a5df8fe4ce03e80d1a9846121 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Wed, 16 Mar 2022 15:12:27 +0800
+Subject: [PATCH 49/71] i386/tdx: Only configure MSR_IA32_UCODE_REV in
+ kvm_init_msrs() for TDs
+
+For TDs, only MSR_IA32_UCODE_REV in kvm_init_msrs() can be configured
+by VMM, while the features enumerated/controlled by other MSRs except
+MSR_IA32_UCODE_REV in kvm_init_msrs() are not under control of VMM.
+
+Only configure MSR_IA32_UCODE_REV for TDs.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+---
+ target/i386/kvm/kvm.c | 40 +++++++++++++++++++++-------------------
+ 1 file changed, 21 insertions(+), 19 deletions(-)
+
+diff --git a/target/i386/kvm/kvm.c b/target/i386/kvm/kvm.c
+index b03ce70795..6d6f183b07 100644
+--- a/target/i386/kvm/kvm.c
++++ b/target/i386/kvm/kvm.c
+@@ -3864,32 +3864,34 @@ static void kvm_init_msrs(X86CPU *cpu)
+     CPUX86State *env = &cpu->env;
+ 
+     kvm_msr_buf_reset(cpu);
+-    if (has_msr_arch_capabs) {
+-        kvm_msr_entry_add(cpu, MSR_IA32_ARCH_CAPABILITIES,
+-                          env->features[FEAT_ARCH_CAPABILITIES]);
+-    }
+ 
+-    if (has_msr_core_capabs) {
+-        kvm_msr_entry_add(cpu, MSR_IA32_CORE_CAPABILITY,
+-                          env->features[FEAT_CORE_CAPABILITY]);
+-    }
++    if (!is_tdx_vm()) {
++        if (has_msr_arch_capabs) {
++            kvm_msr_entry_add(cpu, MSR_IA32_ARCH_CAPABILITIES,
++                                env->features[FEAT_ARCH_CAPABILITIES]);
++        }
++
++        if (has_msr_core_capabs) {
++            kvm_msr_entry_add(cpu, MSR_IA32_CORE_CAPABILITY,
++                                env->features[FEAT_CORE_CAPABILITY]);
++        }
++
++        if (has_msr_perf_capabs && cpu->enable_pmu) {
++            kvm_msr_entry_add_perf(cpu, env->features);
++        }
+ 
+-    if (has_msr_perf_capabs && cpu->enable_pmu) {
+-        kvm_msr_entry_add_perf(cpu, env->features);
++        /*
++         * Older kernels do not include VMX MSRs in KVM_GET_MSR_INDEX_LIST, but
++         * all kernels with MSR features should have them.
++         */
++        if (kvm_feature_msrs && cpu_has_vmx(env)) {
++            kvm_msr_entry_add_vmx(cpu, env->features);
++        }
+     }
+ 
+     if (has_msr_ucode_rev) {
+         kvm_msr_entry_add(cpu, MSR_IA32_UCODE_REV, cpu->ucode_rev);
+     }
+-
+-    /*
+-     * Older kernels do not include VMX MSRs in KVM_GET_MSR_INDEX_LIST, but
+-     * all kernels with MSR features should have them.
+-     */
+-    if (kvm_feature_msrs && cpu_has_vmx(env)) {
+-        kvm_msr_entry_add_vmx(cpu, env->features);
+-    }
+-
+     assert(kvm_buf_set_msrs(cpu) == 0);
+ }
+ 
+-- 
+2.25.1
+

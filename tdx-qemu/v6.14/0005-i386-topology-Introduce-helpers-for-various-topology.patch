@@ -1,0 +1,89 @@
+From 8f1e3527cbcd7064cc09e6f338676b3e68c46921 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 19 Dec 2024 06:01:20 -0500
+Subject: [PATCH 05/71] i386/topology: Introduce helpers for various topology
+ info of different level
+
+Introduce various helpers for getting the topology info of different
+semantics. Using the helper is more self-explanatory.
+
+Besides, the semantic of the helper will stay unchanged even when new
+topology is added in the future. At that time, updating the
+implementation of the helper without affecting the callers.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Link: https://lore.kernel.org/r/20241219110125.1266461-6-xiaoyao.li@intel.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ include/hw/i386/topology.h | 25 +++++++++++++++++++++++++
+ target/i386/cpu.c          | 11 ++++-------
+ 2 files changed, 29 insertions(+), 7 deletions(-)
+
+diff --git a/include/hw/i386/topology.h b/include/hw/i386/topology.h
+index 21b65219a5..f6380f1ed7 100644
+--- a/include/hw/i386/topology.h
++++ b/include/hw/i386/topology.h
+@@ -203,4 +203,29 @@ static inline bool x86_has_extended_topo(unsigned long *topo_bitmap)
+            test_bit(CPU_TOPOLOGY_LEVEL_DIE, topo_bitmap);
+ }
+ 
++static inline unsigned x86_module_per_pkg(X86CPUTopoInfo *topo_info)
++{
++    return topo_info->modules_per_die * topo_info->dies_per_pkg;
++}
++
++static inline unsigned x86_cores_per_pkg(X86CPUTopoInfo *topo_info)
++{
++    return topo_info->cores_per_module * x86_module_per_pkg(topo_info);
++}
++
++static inline unsigned x86_threads_per_pkg(X86CPUTopoInfo *topo_info)
++{
++    return topo_info->threads_per_core * x86_cores_per_pkg(topo_info);
++}
++
++static inline unsigned x86_threads_per_module(X86CPUTopoInfo *topo_info)
++{
++    return topo_info->threads_per_core * topo_info->cores_per_module;
++}
++
++static inline unsigned x86_threads_per_die(X86CPUTopoInfo *topo_info)
++{
++    return x86_threads_per_module(topo_info) * topo_info->modules_per_die;
++}
++
+ #endif /* HW_I386_TOPOLOGY_H */
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index 126f1e7e2b..206cece148 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -311,13 +311,11 @@ static uint32_t num_threads_by_topo_level(X86CPUTopoInfo *topo_info,
+     case CPU_TOPOLOGY_LEVEL_CORE:
+         return topo_info->threads_per_core;
+     case CPU_TOPOLOGY_LEVEL_MODULE:
+-        return topo_info->threads_per_core * topo_info->cores_per_module;
++        return x86_threads_per_module(topo_info);
+     case CPU_TOPOLOGY_LEVEL_DIE:
+-        return topo_info->threads_per_core * topo_info->cores_per_module *
+-               topo_info->modules_per_die;
++        return x86_threads_per_die(topo_info);
+     case CPU_TOPOLOGY_LEVEL_SOCKET:
+-        return topo_info->threads_per_core * topo_info->cores_per_module *
+-               topo_info->modules_per_die * topo_info->dies_per_pkg;
++        return x86_threads_per_pkg(topo_info);
+     default:
+         g_assert_not_reached();
+     }
+@@ -6506,8 +6504,7 @@ void cpu_x86_cpuid(CPUX86State *env, uint32_t index, uint32_t count,
+     topo_info.cores_per_module = cs->nr_cores / env->nr_dies / env->nr_modules;
+     topo_info.threads_per_core = cs->nr_threads;
+ 
+-    threads_per_pkg = topo_info.threads_per_core * topo_info.cores_per_module *
+-                      topo_info.modules_per_die * topo_info.dies_per_pkg;
++    threads_per_pkg = x86_threads_per_pkg(&topo_info);
+ 
+     /* Calculate & apply limits for different index ranges */
+     if (index >= 0xC0000000) {
+-- 
+2.25.1
+

@@ -1,0 +1,192 @@
+From ed4d3565b28a426cebfbf95a4bada0b16ec9382b Mon Sep 17 00:00:00 2001
+From: Chenyi Qiang <chenyi.qiang@intel.com>
+Date: Tue, 18 Jun 2024 07:31:33 +0000
+Subject: [PATCH 70/71] memory: Attach MemoryAttributeManager to
+ guest_memfd-backed RAMBlocks
+
+Introduce a new field, memory_attribute_manager, in RAMBlock to link to
+an MemoryAttributeManager object. This change centralizes all
+guest_memfd state information (like fd and shared_bitmap) within a
+RAMBlock, making it easier to manage.
+
+Use the realize()/unrealize() helpers to initialize/uninitialize the
+MemoryAttributeManager object. Register/unregister the object in the
+target RAMBlock's MemoryRegion when creating guest_memfd.
+
+In the kvm_convert_memory() function, manage memory state changes by
+using the shared_bitmap to call set_attribute() only on the specific
+memory range. Additionally, use the
+memory_attribute_manager_state_change() helper to notify the reigstered
+RamDiscardListener of these changes.
+
+Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
+---
+Changes in v3:
+    - Use ram_discard_manager_reply_populated/discarded() to set the
+      memory attribute and add the undo support if state_change()
+      failed.
+    - Didn't add Reviewed-by from Alexey due to the new changes in this
+      commit.
+
+Changes in v2:
+    - Introduce a new field memory_attribute_manager in RAMBlock.
+    - Move the state_change() handling during page conversion in this patch.
+    - Undo what we did if it fails to set.
+    - Change the order of close(guest_memfd) and memory_attribute_manager cleanup.
+---
+ accel/kvm/kvm-all.c     | 50 +++++++++++++++++++++++++++++++++++++++--
+ include/exec/ramblock.h |  2 ++
+ system/physmem.c        | 13 +++++++++++
+ 3 files changed, 63 insertions(+), 2 deletions(-)
+
+diff --git a/accel/kvm/kvm-all.c b/accel/kvm/kvm-all.c
+index b338e0542a..c0b9e090bf 100644
+--- a/accel/kvm/kvm-all.c
++++ b/accel/kvm/kvm-all.c
+@@ -48,6 +48,7 @@
+ #include "kvm-cpus.h"
+ #include "sysemu/dirtylimit.h"
+ #include "qemu/range.h"
++#include "sysemu/memory-attribute-manager.h"
+ 
+ #include "hw/boards.h"
+ #include "sysemu/stats.h"
+@@ -3018,6 +3019,25 @@ static void kvm_eat_signals(CPUState *cpu)
+     } while (sigismember(&chkset, SIG_IPI));
+ }
+ 
++typedef struct SetMemoryAttribute {
++    bool to_private;
++} SetMemoryAttribute;
++
++static int kvm_set_memory_attributes_cb(MemoryRegionSection *section,
++                                        void *opaque)
++{
++    hwaddr start = section->offset_within_address_space;
++    hwaddr size = section->size;
++    SetMemoryAttribute *args = opaque;
++    bool to_private = args->to_private;
++
++    if (to_private) {
++        return kvm_set_memory_attributes_private(start, size);
++    } else {
++        return kvm_set_memory_attributes_shared(start, size);
++    }
++}
++
+ int kvm_convert_memory(hwaddr start, hwaddr size, bool to_private)
+ {
+     MemoryRegionSection section;
+@@ -3026,6 +3046,7 @@ int kvm_convert_memory(hwaddr start, hwaddr size, bool to_private)
+     RAMBlock *rb;
+     void *addr;
+     int ret = -1;
++    SetMemoryAttribute args = { .to_private = to_private };
+ 
+     trace_kvm_convert_memory(start, size, to_private ? "shared_to_private" : "private_to_shared");
+ 
+@@ -3077,9 +3098,13 @@ int kvm_convert_memory(hwaddr start, hwaddr size, bool to_private)
+     }
+ 
+     if (to_private) {
+-        ret = kvm_set_memory_attributes_private(start, size);
++        ret = ram_discard_manager_replay_populated(mr->rdm, &section,
++                                                   kvm_set_memory_attributes_cb,
++                                                   &args);
+     } else {
+-        ret = kvm_set_memory_attributes_shared(start, size);
++        ret = ram_discard_manager_replay_discarded(mr->rdm, &section,
++                                                   kvm_set_memory_attributes_cb,
++                                                   &args);
+     }
+     if (ret) {
+         goto out_unref;
+@@ -3088,6 +3113,27 @@ int kvm_convert_memory(hwaddr start, hwaddr size, bool to_private)
+     addr = memory_region_get_ram_ptr(mr) + section.offset_within_region;
+     rb = qemu_ram_block_from_host(addr, false, &offset);
+ 
++    ret = memory_attribute_manager_state_change(MEMORY_ATTRIBUTE_MANAGER(mr->rdm),
++                                                offset, size, to_private);
++    if (ret) {
++        warn_report("Failed to notify the listener the state change of "
++                    "(0x%"HWADDR_PRIx" + 0x%"HWADDR_PRIx") to %s",
++                    start, size, to_private ? "private" : "shared");
++        args.to_private = !to_private;
++        if (to_private) {
++            ret = ram_discard_manager_replay_populated(mr->rdm, &section,
++                                                       kvm_set_memory_attributes_cb,
++                                                       &args);
++        } else {
++            ret = ram_discard_manager_replay_discarded(mr->rdm, &section,
++                                                       kvm_set_memory_attributes_cb,
++                                                       &args);
++        }
++        if (ret) {
++            goto out_unref;
++        }
++    }
++
+     if (to_private) {
+         if (rb->page_size != qemu_real_host_page_size()) {
+             /*
+diff --git a/include/exec/ramblock.h b/include/exec/ramblock.h
+index 0babd105c0..ab506fa380 100644
+--- a/include/exec/ramblock.h
++++ b/include/exec/ramblock.h
+@@ -23,6 +23,7 @@
+ #include "cpu-common.h"
+ #include "qemu/rcu.h"
+ #include "exec/ramlist.h"
++#include "sysemu/memory-attribute-manager.h"
+ 
+ struct RAMBlock {
+     struct rcu_head rcu;
+@@ -42,6 +43,7 @@ struct RAMBlock {
+     int fd;
+     uint64_t fd_offset;
+     int guest_memfd;
++    MemoryAttributeManager *memory_attribute_manager;
+     size_t page_size;
+     /* dirty bitmap used during migration */
+     unsigned long *bmap;
+diff --git a/system/physmem.c b/system/physmem.c
+index 75389064a8..4935974014 100644
+--- a/system/physmem.c
++++ b/system/physmem.c
+@@ -53,6 +53,7 @@
+ #include "sysemu/hostmem.h"
+ #include "sysemu/hw_accel.h"
+ #include "sysemu/xen-mapcache.h"
++#include "sysemu/memory-attribute-manager.h"
+ #include "trace.h"
+ 
+ #ifdef CONFIG_FALLOCATE_PUNCH_HOLE
+@@ -1885,6 +1886,16 @@ static void ram_block_add(RAMBlock *new_block, Error **errp)
+             qemu_mutex_unlock_ramlist();
+             goto out_free;
+         }
++
++        new_block->memory_attribute_manager = MEMORY_ATTRIBUTE_MANAGER(object_new(TYPE_MEMORY_ATTRIBUTE_MANAGER));
++        if (memory_attribute_manager_realize(new_block->memory_attribute_manager, new_block->mr)) {
++            error_setg(errp, "Failed to realize memory attribute manager");
++            object_unref(OBJECT(new_block->memory_attribute_manager));
++            close(new_block->guest_memfd);
++            ram_block_discard_require(false);
++            qemu_mutex_unlock_ramlist();
++            goto out_free;
++        }
+     }
+ 
+     ram_size = (new_block->offset + new_block->max_length) >> TARGET_PAGE_BITS;
+@@ -2140,6 +2151,8 @@ static void reclaim_ramblock(RAMBlock *block)
+     }
+ 
+     if (block->guest_memfd >= 0) {
++        memory_attribute_manager_unrealize(block->memory_attribute_manager);
++        object_unref(OBJECT(block->memory_attribute_manager));
+         close(block->guest_memfd);
+         ram_block_discard_require(false);
+     }
+-- 
+2.25.1
+

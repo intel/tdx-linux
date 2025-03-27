@@ -1,0 +1,92 @@
+From 98745f4a7c48be11ef909b8578c69a110acd4ac8 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Fri, 2 Aug 2024 02:57:01 -0400
+Subject: [PATCH 43/71] i386/cpu: Introduce enable_cpuid_0x1f to force exposing
+ CPUID 0x1f
+
+Currently, QEMU exposes CPUID 0x1f to guest only when necessary, i.e.,
+when topology level that cannot be enumerated by leaf 0xB, e.g., die or
+module level, are configured for the guest, e.g., -smp xx,dies=2.
+
+However, TDX architecture forces to require CPUID 0x1f to configure CPU
+topology.
+
+Introduce a bool flag, enable_cpuid_0x1f, in CPU for the case that
+requires CPUID leaf 0x1f to be exposed to guest.
+
+Introduce a new function x86_has_cpuid_0x1f(), which is the warpper of
+cpu->enable_cpuid_0x1f and x86_has_extended_topo() to check if it needs
+to enable cpuid leaf 0x1f for the guest.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+ target/i386/cpu.c     | 4 ++--
+ target/i386/cpu.h     | 9 +++++++++
+ target/i386/kvm/kvm.c | 2 +-
+ 3 files changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index 7f6711e205..7e86bca763 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -6725,7 +6725,7 @@ void cpu_x86_cpuid(CPUX86State *env, uint32_t index, uint32_t count,
+         break;
+     case 0x1F:
+         /* V2 Extended Topology Enumeration Leaf */
+-        if (!x86_has_extended_topo(env->avail_cpu_topo)) {
++        if (!x86_has_cpuid_0x1f(cpu)) {
+             *eax = *ebx = *ecx = *edx = 0;
+             break;
+         }
+@@ -7588,7 +7588,7 @@ void x86_cpu_expand_features(X86CPU *cpu, Error **errp)
+          * cpu->vendor_cpuid_only has been unset for compatibility with older
+          * machine types.
+          */
+-        if (x86_has_extended_topo(env->avail_cpu_topo) &&
++        if (x86_has_cpuid_0x1f(cpu) &&
+             (IS_INTEL_CPU(env) || !cpu->vendor_cpuid_only)) {
+             x86_cpu_adjust_level(cpu, &env->cpuid_min_level, 0x1F);
+         }
+diff --git a/target/i386/cpu.h b/target/i386/cpu.h
+index bcdebdf48f..330c76c0f3 100644
+--- a/target/i386/cpu.h
++++ b/target/i386/cpu.h
+@@ -2168,6 +2168,9 @@ struct ArchCPU {
+     /* Compatibility bits for old machine types: */
+     bool enable_cpuid_0xb;
+ 
++    /* Force to enable cpuid 0x1f */
++    bool enable_cpuid_0x1f;
++
+     /* Enable auto level-increase for all CPUID leaves */
+     bool full_cpuid_auto_level;
+ 
+@@ -2430,6 +2433,12 @@ void host_cpuid(uint32_t function, uint32_t count,
+                 uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx);
+ bool cpu_has_x2apic_feature(CPUX86State *env);
+ 
++static inline bool x86_has_cpuid_0x1f(X86CPU *cpu)
++{
++    return cpu->enable_cpuid_0x1f ||
++           x86_has_extended_topo(cpu->env.avail_cpu_topo);
++}
++
+ /* helper.c */
+ void x86_cpu_set_a20(X86CPU *cpu, int a20_state);
+ void cpu_sync_avx_hflag(CPUX86State *env);
+diff --git a/target/i386/kvm/kvm.c b/target/i386/kvm/kvm.c
+index 9d4ca7af22..8f0f713cd9 100644
+--- a/target/i386/kvm/kvm.c
++++ b/target/i386/kvm/kvm.c
+@@ -1874,7 +1874,7 @@ uint32_t kvm_x86_build_cpuid(CPUX86State *env, struct kvm_cpuid_entry2 *entries,
+             break;
+         }
+         case 0x1f:
+-            if (!x86_has_extended_topo(env->avail_cpu_topo)) {
++            if (!x86_has_cpuid_0x1f(env_archcpu(env))) {
+                 cpuid_i--;
+                 break;
+             }
+-- 
+2.25.1
+

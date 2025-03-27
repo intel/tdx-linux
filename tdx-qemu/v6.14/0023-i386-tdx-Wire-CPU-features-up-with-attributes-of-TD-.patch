@@ -1,0 +1,61 @@
+From 4a40decc6b8ed7e6309090999cc716edf53df1d5 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Fri, 18 Feb 2022 10:37:57 +0800
+Subject: [PATCH 23/71] i386/tdx: Wire CPU features up with attributes of TD
+ guest
+
+For QEMU VMs,
+  - PKS is configured via CPUID_7_0_ECX_PKS, e.g., -cpu xxx,+pks  and
+  - PMU is configured by x86cpu->enable_pmu, e.g., -cpu xxx,pmu=on
+
+While the bit 30 (PKS) and bit 63 (PERFMON) of TD's attributes are also
+used to configure the PKS and PERFMON/PMU of TD, reuse the existing
+configuration interfaces of 'cpu' for TD's attributes.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+---
+ target/i386/kvm/tdx.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index dcb19a18e4..653942d83b 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -19,6 +19,8 @@
+ #include "tdx.h"
+ 
+ #define TDX_TD_ATTRIBUTES_SEPT_VE_DISABLE   BIT_ULL(28)
++#define TDX_TD_ATTRIBUTES_PKS               BIT_ULL(30)
++#define TDX_TD_ATTRIBUTES_PERFMON           BIT_ULL(63)
+ 
+ static TdxGuest *tdx_guest;
+ 
+@@ -151,6 +153,15 @@ static int tdx_kvm_type(X86ConfidentialGuest *cg)
+     return KVM_X86_TDX_VM;
+ }
+ 
++static void setup_td_guest_attributes(X86CPU *x86cpu)
++{
++    CPUX86State *env = &x86cpu->env;
++
++    tdx_guest->attributes |= (env->features[FEAT_7_0_ECX] & CPUID_7_0_ECX_PKS) ?
++                             TDX_TD_ATTRIBUTES_PKS : 0;
++    tdx_guest->attributes |= x86cpu->enable_pmu ? TDX_TD_ATTRIBUTES_PERFMON : 0;
++}
++
+ static int setup_td_xfam(X86CPU *x86cpu, Error **errp)
+ {
+     CPUX86State *env = &x86cpu->env;
+@@ -214,6 +225,8 @@ int tdx_pre_create_vcpu(CPUState *cpu, Error **errp)
+     init_vm = g_malloc0(sizeof(struct kvm_tdx_init_vm) +
+                         sizeof(struct kvm_cpuid_entry2) * KVM_MAX_CPUID_ENTRIES);
+ 
++    setup_td_guest_attributes(x86cpu);
++
+     r = setup_td_xfam(x86cpu, errp);
+     if (r) {
+         return r;
+-- 
+2.25.1
+

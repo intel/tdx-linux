@@ -1,0 +1,47 @@
+From 06ae1b2277a5a2840612d522b88b483d3392126e Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 19 Dec 2024 06:01:24 -0500
+Subject: [PATCH 09/71] i386/cpu: Set up CPUID_HT in x86_cpu_expand_features()
+ instead of cpu_x86_cpuid()
+
+Currently CPUID_HT is evaluated in cpu_x86_cpuid() each time. It's not a
+correct usage of how feature bit is maintained and evaluated. The
+expected practice is that features are tracked in env->features[] and
+cpu_x86_cpuid() should be the consumer of env->features[].
+
+Track CPUID_HT in env->features[FEAT_1_EDX] instead and evaluate it in
+cpu's realizefn().
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Link: https://lore.kernel.org/r/20241219110125.1266461-10-xiaoyao.li@intel.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ target/i386/cpu.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index 6bde03df4e..1de0b85310 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -6538,7 +6538,6 @@ void cpu_x86_cpuid(CPUX86State *env, uint32_t index, uint32_t count,
+         *edx = env->features[FEAT_1_EDX];
+         if (threads_per_pkg > 1) {
+             *ebx |= threads_per_pkg << 16;
+-            *edx |= CPUID_HT;
+         }
+         if (!cpu->enable_pmu) {
+             *ecx &= ~CPUID_EXT_PDCM;
+@@ -7529,6 +7528,10 @@ void x86_cpu_expand_features(X86CPU *cpu, Error **errp)
+         }
+     }
+ 
++    if (x86_threads_per_pkg(&env->topo_info) > 1) {
++        env->features[FEAT_1_EDX] |= CPUID_HT;
++    }
++
+     for (i = 0; i < ARRAY_SIZE(feature_dependencies); i++) {
+         FeatureDep *d = &feature_dependencies[i];
+         if (!(env->features[d->from.index] & d->from.mask)) {
+-- 
+2.25.1
+

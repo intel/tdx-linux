@@ -1,0 +1,49 @@
+From 3eec7836f2d983b93a65dd64e276d4ba8118a4a5 Mon Sep 17 00:00:00 2001
+From: Lei Wang <lei4.wang@intel.com>
+Date: Fri, 6 Jan 2023 00:38:22 -0800
+Subject: [PATCH 11/71] i386: Remove unused parameter "uint32_t bit" in
+ feature_word_description()
+
+Parameter "uint32_t bit" is not used in function feature_word_description(),
+so remove it.
+
+Signed-off-by: Lei Wang <lei4.wang@intel.com>
+Reviewed-by: Igor Mammedov <imammedo@redhat.com>
+Reviewed-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+ target/i386/cpu.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index ae5fab0562..5d0b9797d7 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -5450,7 +5450,7 @@ static const TypeInfo max_x86_cpu_type_info = {
+     .class_init = max_x86_cpu_class_init,
+ };
+ 
+-static char *feature_word_description(FeatureWordInfo *f, uint32_t bit)
++static char *feature_word_description(FeatureWordInfo *f)
+ {
+     assert(f->type == CPUID_FEATURE_WORD || f->type == MSR_FEATURE_WORD);
+ 
+@@ -5489,6 +5489,7 @@ static void mark_unavailable_features(X86CPU *cpu, FeatureWord w, uint64_t mask,
+     CPUX86State *env = &cpu->env;
+     FeatureWordInfo *f = &feature_word_info[w];
+     int i;
++    g_autofree char *feat_word_str = feature_word_description(f);
+ 
+     if (!cpu->force_features) {
+         env->features[w] &= ~mask;
+@@ -5501,7 +5502,6 @@ static void mark_unavailable_features(X86CPU *cpu, FeatureWord w, uint64_t mask,
+ 
+     for (i = 0; i < 64; ++i) {
+         if ((1ULL << i) & mask) {
+-            g_autofree char *feat_word_str = feature_word_description(f, i);
+             warn_report("%s: %s%s%s [bit %d]",
+                         verbose_prefix,
+                         feat_word_str,
+-- 
+2.25.1
+

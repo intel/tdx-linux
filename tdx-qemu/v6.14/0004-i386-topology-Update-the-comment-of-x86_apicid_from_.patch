@@ -1,0 +1,37 @@
+From 5a92ba551508dd5f6f08f3bac514bec4712617cb Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 19 Dec 2024 06:01:19 -0500
+Subject: [PATCH 04/71] i386/topology: Update the comment of
+ x86_apicid_from_topo_ids()
+
+Update the comment of x86_apicid_from_topo_ids() to match the current
+implementation,
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Reviewed-by: Zhao Liu <zhao1.liu@intel.com>
+Link: https://lore.kernel.org/r/20241219110125.1266461-5-xiaoyao.li@intel.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ include/hw/i386/topology.h | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/include/hw/i386/topology.h b/include/hw/i386/topology.h
+index b2c8bf2de1..21b65219a5 100644
+--- a/include/hw/i386/topology.h
++++ b/include/hw/i386/topology.h
+@@ -121,9 +121,10 @@ static inline unsigned apicid_pkg_offset(X86CPUTopoInfo *topo_info)
+ }
+ 
+ /*
+- * Make APIC ID for the CPU based on Pkg_ID, Core_ID, SMT_ID
++ * Make APIC ID for the CPU based on topology and IDs of each topology level.
+  *
+- * The caller must make sure core_id < nr_cores and smt_id < nr_threads.
++ * The caller must make sure the ID of each level doesn't exceed the width of
++ * the level.
+  */
+ static inline apic_id_t x86_apicid_from_topo_ids(X86CPUTopoInfo *topo_info,
+                                                  const X86CPUTopoIDs *topo_ids)
+-- 
+2.25.1
+

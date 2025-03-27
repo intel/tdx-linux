@@ -1,0 +1,42 @@
+From b09559830cd6ce13bf07bd76470a90c655106265 Mon Sep 17 00:00:00 2001
+From: Paolo Bonzini <Paolo Bonzini pbonzini@redhat.com>
+Date: Thu, 27 Mar 2025 12:15:43 +0800
+Subject: [PATCH 006/130] KVM: x86: move vm_destroy callback at end of
+ kvm_arch_destroy_vm
+
+TDX needs to free the TDR control structures last, after all paging structures
+have been torn down; move the vm_destroy callback at a suitable place.
+The new place is also okay for AMD; the main difference is that the
+MMU has been torn down and, if anything, that is better done before
+the SNP ASID is released.
+
+Extracted from a patch by Yan Zhao.
+
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ arch/x86/kvm/x86.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index 9ec9787c51e7..2bc976e35286 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -12868,7 +12868,6 @@ void kvm_arch_destroy_vm(struct kvm *kvm)
+ 		mutex_unlock(&kvm->slots_lock);
+ 	}
+ 	kvm_destroy_vcpus(kvm);
+-	kvm_x86_call(vm_destroy)(kvm);
+ 	kvm_free_msr_filter(srcu_dereference_check(kvm->arch.msr_filter, &kvm->srcu, 1));
+ 	kvm_pic_destroy(kvm);
+ 	kvm_ioapic_destroy(kvm);
+@@ -12878,6 +12877,7 @@ void kvm_arch_destroy_vm(struct kvm *kvm)
+ 	kvm_page_track_cleanup(kvm);
+ 	kvm_xen_destroy_vm(kvm);
+ 	kvm_hv_destroy_vm(kvm);
++	kvm_x86_call(vm_destroy)(kvm);
+ }
+ 
+ static void memslot_rmap_free(struct kvm_memory_slot *slot)
+-- 
+2.25.1
+

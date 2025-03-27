@@ -1,0 +1,67 @@
+From 049a1519c29397a5d2bd18623642d41d1959768c Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 15 Aug 2024 09:51:35 -0400
+Subject: [PATCH 59/71] i386/cgs: Introduce
+ x86_confidential_guest_check_features()
+
+To do cgs specific feature checking. Note the feature checking in
+x86_cpu_filter_features() is valid for non-cgs VMs. For cgs VMs like
+TDX, what features can be supported has more restrictions.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+ target/i386/confidential-guest.h | 13 +++++++++++++
+ target/i386/kvm/kvm.c            |  8 ++++++++
+ 2 files changed, 21 insertions(+)
+
+diff --git a/target/i386/confidential-guest.h b/target/i386/confidential-guest.h
+index 8a5cc7ecff..4e7eb43416 100644
+--- a/target/i386/confidential-guest.h
++++ b/target/i386/confidential-guest.h
+@@ -42,6 +42,7 @@ struct X86ConfidentialGuestClass {
+     void (*cpu_instance_init)(X86ConfidentialGuest *cg, CPUState *cpu);
+     uint32_t (*adjust_cpuid_features)(X86ConfidentialGuest *cg, uint32_t feature,
+                                       uint32_t index, int reg, uint32_t value);
++    int (*check_features)(X86ConfidentialGuest *cg, CPUState *cs);
+ };
+ 
+ /**
+@@ -91,4 +92,16 @@ static inline int x86_confidential_guest_adjust_cpuid_features(X86ConfidentialGu
+     }
+ }
+ 
++static inline int x86_confidential_guest_check_features(X86ConfidentialGuest *cg,
++                                                        CPUState *cs)
++{
++    X86ConfidentialGuestClass *klass = X86_CONFIDENTIAL_GUEST_GET_CLASS(cg);
++
++    if (klass->check_features) {
++        return klass->check_features(cg, cs);
++    }
++
++    return 0;
++}
++
+ #endif
+diff --git a/target/i386/kvm/kvm.c b/target/i386/kvm/kvm.c
+index 05d7fdbbd9..4d8d3caf44 100644
+--- a/target/i386/kvm/kvm.c
++++ b/target/i386/kvm/kvm.c
+@@ -2095,6 +2095,14 @@ int kvm_arch_init_vcpu(CPUState *cs)
+     int r;
+     Error *local_err = NULL;
+ 
++    if (current_machine->cgs) {
++        r = x86_confidential_guest_check_features(
++                X86_CONFIDENTIAL_GUEST(current_machine->cgs), cs);
++        if (r < 0) {
++            return r;
++        }
++    }
++
+     memset(&cpuid_data, 0, sizeof(cpuid_data));
+ 
+     cpuid_i = 0;
+-- 
+2.25.1
+

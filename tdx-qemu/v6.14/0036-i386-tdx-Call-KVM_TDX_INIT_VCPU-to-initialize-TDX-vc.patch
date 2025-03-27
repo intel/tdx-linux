@@ -1,0 +1,52 @@
+From ab3cff32f74906ca7058fea6385af059fd560df4 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Mon, 24 Jan 2022 21:27:56 -0600
+Subject: [PATCH 36/71] i386/tdx: Call KVM_TDX_INIT_VCPU to initialize TDX vcpu
+
+TDX vcpu needs to be initialized by SEAMCALL(TDH.VP.INIT) and KVM
+provides vcpu level IOCTL KVM_TDX_INIT_VCPU for it.
+
+KVM_TDX_INIT_VCPU needs the address of the HOB as input. Invoke it for
+each vcpu after HOB list is created.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+---
+ target/i386/kvm/tdx.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index 7a01d65428..05852fefc0 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -267,6 +267,18 @@ static void tdx_init_ram_entries(void)
+     tdx_guest->nr_ram_entries = j;
+ }
+ 
++static void tdx_post_init_vcpus(void)
++{
++    TdxFirmwareEntry *hob;
++    CPUState *cpu;
++
++    hob = tdx_get_hob_entry(tdx_guest);
++    CPU_FOREACH(cpu) {
++        tdx_vcpu_ioctl(cpu, KVM_TDX_INIT_VCPU, 0, (void *)hob->address,
++                       &error_fatal);
++    }
++}
++
+ static void tdx_finalize_vm(Notifier *notifier, void *unused)
+ {
+     TdxFirmware *tdvf = &tdx_guest->tdvf;
+@@ -300,6 +312,8 @@ static void tdx_finalize_vm(Notifier *notifier, void *unused)
+ 
+     tdvf_hob_create(tdx_guest, tdx_get_hob_entry(tdx_guest));
+ 
++    tdx_post_init_vcpus();
++
+     for_each_tdx_fw_entry(tdvf, entry) {
+         struct kvm_tdx_init_mem_region region;
+         uint32_t flags;
+-- 
+2.25.1
+

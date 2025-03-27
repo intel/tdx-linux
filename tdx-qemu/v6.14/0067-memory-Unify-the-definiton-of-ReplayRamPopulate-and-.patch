@@ -1,0 +1,224 @@
+From bc7265b8d37617e86d7605de2bc0c75fc7d022be Mon Sep 17 00:00:00 2001
+From: Chenyi Qiang <chenyi.qiang@intel.com>
+Date: Thu, 6 Mar 2025 17:12:07 +0800
+Subject: [PATCH 67/71] memory: Unify the definiton of ReplayRamPopulate() and
+ ReplayRamDiscard()
+
+Update ReplayRamDiscard() function to return the result and unify the
+ReplayRamPopulate() and ReplayRamDiscard() to ReplayRamStateChange() at
+the same time due to their identical definitions. This unification
+simplifies related structures, such as VirtIOMEMReplayData, which makes
+it more cleaner and maintainable. It also paves the way for future
+extension when introducing new ReplayRamDiscard() functions to return
+the results.
+
+Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
+---
+Changes in v3:
+    - Newly added.
+---
+ hw/virtio/virtio-mem.c | 20 ++++++++++----------
+ include/exec/memory.h  | 31 ++++++++++++++++---------------
+ migration/ram.c        |  5 +++--
+ system/memory.c        | 12 ++++++------
+ 4 files changed, 35 insertions(+), 33 deletions(-)
+
+diff --git a/hw/virtio/virtio-mem.c b/hw/virtio/virtio-mem.c
+index 1f42d2f5ed..098b5b8be7 100644
+--- a/hw/virtio/virtio-mem.c
++++ b/hw/virtio/virtio-mem.c
+@@ -1708,7 +1708,7 @@ static bool virtio_mem_rdm_is_populated(const RamDiscardManager *rdm,
+ }
+ 
+ struct VirtIOMEMReplayData {
+-    void *fn;
++    ReplayRamStateChange fn;
+     void *opaque;
+ };
+ 
+@@ -1716,12 +1716,12 @@ static int virtio_mem_rdm_replay_populated_cb(MemoryRegionSection *s, void *arg)
+ {
+     struct VirtIOMEMReplayData *data = arg;
+ 
+-    return ((ReplayRamPopulate)data->fn)(s, data->opaque);
++    return data->fn(s, data->opaque);
+ }
+ 
+ static int virtio_mem_rdm_replay_populated(const RamDiscardManager *rdm,
+                                            MemoryRegionSection *s,
+-                                           ReplayRamPopulate replay_fn,
++                                           ReplayRamStateChange replay_fn,
+                                            void *opaque)
+ {
+     const VirtIOMEM *vmem = VIRTIO_MEM(rdm);
+@@ -1740,14 +1740,14 @@ static int virtio_mem_rdm_replay_discarded_cb(MemoryRegionSection *s,
+ {
+     struct VirtIOMEMReplayData *data = arg;
+ 
+-    ((ReplayRamDiscard)data->fn)(s, data->opaque);
++    data->fn(s, data->opaque);
+     return 0;
+ }
+ 
+-static void virtio_mem_rdm_replay_discarded(const RamDiscardManager *rdm,
+-                                            MemoryRegionSection *s,
+-                                            ReplayRamDiscard replay_fn,
+-                                            void *opaque)
++static int virtio_mem_rdm_replay_discarded(const RamDiscardManager *rdm,
++                                           MemoryRegionSection *s,
++                                           ReplayRamStateChange replay_fn,
++                                           void *opaque)
+ {
+     const VirtIOMEM *vmem = VIRTIO_MEM(rdm);
+     struct VirtIOMEMReplayData data = {
+@@ -1756,8 +1756,8 @@ static void virtio_mem_rdm_replay_discarded(const RamDiscardManager *rdm,
+     };
+ 
+     g_assert(s->mr == &vmem->memdev->mr);
+-    virtio_mem_for_each_unplugged_section(vmem, s, &data,
+-                                          virtio_mem_rdm_replay_discarded_cb);
++    return virtio_mem_for_each_unplugged_section(vmem, s, &data,
++                                                 virtio_mem_rdm_replay_discarded_cb);
+ }
+ 
+ static void virtio_mem_rdm_register_listener(RamDiscardManager *rdm,
+diff --git a/include/exec/memory.h b/include/exec/memory.h
+index 9dc9ae1814..6b16cddddb 100644
+--- a/include/exec/memory.h
++++ b/include/exec/memory.h
+@@ -566,8 +566,7 @@ static inline void ram_discard_listener_init(RamDiscardListener *rdl,
+     rdl->double_discard_supported = double_discard_supported;
+ }
+ 
+-typedef int (*ReplayRamPopulate)(MemoryRegionSection *section, void *opaque);
+-typedef void (*ReplayRamDiscard)(MemoryRegionSection *section, void *opaque);
++typedef int (*ReplayRamStateChange)(MemoryRegionSection *section, void *opaque);
+ 
+ /*
+  * RamDiscardManagerClass:
+@@ -641,36 +640,38 @@ struct RamDiscardManagerClass {
+     /**
+      * @replay_populated:
+      *
+-     * Call the #ReplayRamPopulate callback for all populated parts within the
++     * Call the #ReplayRamStateChange callback for all populated parts within the
+      * #MemoryRegionSection via the #RamDiscardManager.
+      *
+      * In case any call fails, no further calls are made.
+      *
+      * @rdm: the #RamDiscardManager
+      * @section: the #MemoryRegionSection
+-     * @replay_fn: the #ReplayRamPopulate callback
++     * @replay_fn: the #ReplayRamStateChange callback
+      * @opaque: pointer to forward to the callback
+      *
+      * Returns 0 on success, or a negative error if any notification failed.
+      */
+     int (*replay_populated)(const RamDiscardManager *rdm,
+                             MemoryRegionSection *section,
+-                            ReplayRamPopulate replay_fn, void *opaque);
++                            ReplayRamStateChange replay_fn, void *opaque);
+ 
+     /**
+      * @replay_discarded:
+      *
+-     * Call the #ReplayRamDiscard callback for all discarded parts within the
++     * Call the #ReplayRamStateChange callback for all discarded parts within the
+      * #MemoryRegionSection via the #RamDiscardManager.
+      *
+      * @rdm: the #RamDiscardManager
+      * @section: the #MemoryRegionSection
+-     * @replay_fn: the #ReplayRamDiscard callback
++     * @replay_fn: the #ReplayRamStateChange callback
+      * @opaque: pointer to forward to the callback
++     *
++     * Returns 0 on success, or a negative error if any notification failed.
+      */
+-    void (*replay_discarded)(const RamDiscardManager *rdm,
+-                             MemoryRegionSection *section,
+-                             ReplayRamDiscard replay_fn, void *opaque);
++    int (*replay_discarded)(const RamDiscardManager *rdm,
++                            MemoryRegionSection *section,
++                            ReplayRamStateChange replay_fn, void *opaque);
+ 
+     /**
+      * @register_listener:
+@@ -713,13 +714,13 @@ bool ram_discard_manager_is_populated(const RamDiscardManager *rdm,
+ 
+ int ram_discard_manager_replay_populated(const RamDiscardManager *rdm,
+                                          MemoryRegionSection *section,
+-                                         ReplayRamPopulate replay_fn,
++                                         ReplayRamStateChange replay_fn,
+                                          void *opaque);
+ 
+-void ram_discard_manager_replay_discarded(const RamDiscardManager *rdm,
+-                                          MemoryRegionSection *section,
+-                                          ReplayRamDiscard replay_fn,
+-                                          void *opaque);
++int ram_discard_manager_replay_discarded(const RamDiscardManager *rdm,
++                                         MemoryRegionSection *section,
++                                         ReplayRamStateChange replay_fn,
++                                         void *opaque);
+ 
+ void ram_discard_manager_register_listener(RamDiscardManager *rdm,
+                                            RamDiscardListener *rdl,
+diff --git a/migration/ram.c b/migration/ram.c
+index 05ff9eb328..a9e00d16c1 100644
+--- a/migration/ram.c
++++ b/migration/ram.c
+@@ -837,8 +837,8 @@ static inline bool migration_bitmap_clear_dirty(RAMState *rs,
+     return ret;
+ }
+ 
+-static void dirty_bitmap_clear_section(MemoryRegionSection *section,
+-                                       void *opaque)
++static int dirty_bitmap_clear_section(MemoryRegionSection *section,
++                                      void *opaque)
+ {
+     const hwaddr offset = section->offset_within_region;
+     const hwaddr size = int128_get64(section->size);
+@@ -857,6 +857,7 @@ static void dirty_bitmap_clear_section(MemoryRegionSection *section,
+     }
+     *cleared_bits += bitmap_count_one_with_offset(rb->bmap, start, npages);
+     bitmap_clear(rb->bmap, start, npages);
++    return 0;
+ }
+ 
+ /*
+diff --git a/system/memory.c b/system/memory.c
+index 0fd2fa5452..4554099ce6 100644
+--- a/system/memory.c
++++ b/system/memory.c
+@@ -2147,7 +2147,7 @@ bool ram_discard_manager_is_populated(const RamDiscardManager *rdm,
+ 
+ int ram_discard_manager_replay_populated(const RamDiscardManager *rdm,
+                                          MemoryRegionSection *section,
+-                                         ReplayRamPopulate replay_fn,
++                                         ReplayRamStateChange replay_fn,
+                                          void *opaque)
+ {
+     RamDiscardManagerClass *rdmc = RAM_DISCARD_MANAGER_GET_CLASS(rdm);
+@@ -2156,15 +2156,15 @@ int ram_discard_manager_replay_populated(const RamDiscardManager *rdm,
+     return rdmc->replay_populated(rdm, section, replay_fn, opaque);
+ }
+ 
+-void ram_discard_manager_replay_discarded(const RamDiscardManager *rdm,
+-                                          MemoryRegionSection *section,
+-                                          ReplayRamDiscard replay_fn,
+-                                          void *opaque)
++int ram_discard_manager_replay_discarded(const RamDiscardManager *rdm,
++                                         MemoryRegionSection *section,
++                                         ReplayRamStateChange replay_fn,
++                                         void *opaque)
+ {
+     RamDiscardManagerClass *rdmc = RAM_DISCARD_MANAGER_GET_CLASS(rdm);
+ 
+     g_assert(rdmc->replay_discarded);
+-    rdmc->replay_discarded(rdm, section, replay_fn, opaque);
++    return rdmc->replay_discarded(rdm, section, replay_fn, opaque);
+ }
+ 
+ void ram_discard_manager_register_listener(RamDiscardManager *rdm,
+-- 
+2.25.1
+

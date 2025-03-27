@@ -1,0 +1,39 @@
+From 25c678992475679e3f80f9e177c2d1eee10c8cde Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Wed, 12 Jan 2022 15:27:09 +0800
+Subject: [PATCH 47/71] i386/tdx: Disable PIC for TDX VMs
+
+Legacy PIC (8259) cannot be supported for TDX VMs since TDX module
+doesn't allow directly interrupt injection.  Using posted interrupts
+for the PIC is not a viable option as the guest BIOS/kernel will not
+do EOI for PIC IRQs, i.e. will leave the vIRR bit set.
+
+Hence disable PIC for TDX VMs and error out if user wants PIC.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+---
+ target/i386/kvm/tdx.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index 9d999ef2ef..3f19fbee4f 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -379,6 +379,13 @@ static int tdx_kvm_init(ConfidentialGuestSupport *cgs, Error **errp)
+         return -EINVAL;
+     }
+ 
++    if (x86ms->pic == ON_OFF_AUTO_AUTO) {
++        x86ms->pic = ON_OFF_AUTO_OFF;
++    } else if (x86ms->pic == ON_OFF_AUTO_ON) {
++        error_setg(errp, "TDX VM doesn't support PIC");
++        return -EINVAL;
++    }
++
+     if (!tdx_caps) {
+         r = get_tdx_capabilities(errp);
+         if (r) {
+-- 
+2.25.1
+

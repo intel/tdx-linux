@@ -1,0 +1,113 @@
+From b47b314a49d0f5a9e1c48ff56b4239e0a9ae59e2 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Wed, 18 Sep 2024 04:15:47 -0400
+Subject: [PATCH 55/71] i386/tdx: Mask off CPUID bits by unsupported TD
+ Attributes
+
+For TDX, some CPUID feature bit is configured via TD attributes. Adjust
+the supported CPUID to mask off the bit if its matched attribute is
+unsupported.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+ target/i386/cpu.h     |  4 ++++
+ target/i386/kvm/tdx.c | 54 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 58 insertions(+)
+
+diff --git a/target/i386/cpu.h b/target/i386/cpu.h
+index feb367c76f..2558a301e5 100644
+--- a/target/i386/cpu.h
++++ b/target/i386/cpu.h
+@@ -904,6 +904,8 @@ uint64_t x86_cpu_get_supported_feature_word(X86CPU *cpu, FeatureWord w);
+ #define CPUID_7_0_ECX_LA57              (1U << 16)
+ /* Read Processor ID */
+ #define CPUID_7_0_ECX_RDPID             (1U << 22)
++/* KeyLocker */
++#define CPUID_7_0_ECX_KeyLocker         (1U << 23)
+ /* Bus Lock Debug Exception */
+ #define CPUID_7_0_ECX_BUS_LOCK_DETECT   (1U << 24)
+ /* Cache Line Demote Instruction */
+@@ -956,6 +958,8 @@ uint64_t x86_cpu_get_supported_feature_word(X86CPU *cpu, FeatureWord w);
+ #define CPUID_7_1_EAX_AVX_VNNI          (1U << 4)
+ /* AVX512 BFloat16 Instruction */
+ #define CPUID_7_1_EAX_AVX512_BF16       (1U << 5)
++/* Linear address space separation */
++#define CPUID_7_1_EAX_LASS              (1U << 6)
+ /* CMPCCXADD Instructions */
+ #define CPUID_7_1_EAX_CMPCCXADD         (1U << 7)
+ /* Fast Zero REP MOVS */
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index 68a987959a..273b8cf902 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -527,6 +527,58 @@ KvmCpuidInfo tdx_fixed1_bits = {
+     },
+ };
+ 
++typedef struct TdxAttrsMap {
++    uint32_t attr_index;
++    uint32_t cpuid_leaf;
++    uint32_t cpuid_subleaf;
++    int cpuid_reg;
++    uint32_t feat_mask;
++} TdxAttrsMap;
++
++static TdxAttrsMap tdx_attrs_maps[] = {
++    {.attr_index = 27,
++     .cpuid_leaf = 7,
++     .cpuid_subleaf = 1,
++     .cpuid_reg = R_EAX,
++     .feat_mask = CPUID_7_1_EAX_LASS},
++    {.attr_index = 30,
++     .cpuid_leaf = 7,
++     .cpuid_subleaf = 0,
++     .cpuid_reg = R_ECX,
++     .feat_mask = CPUID_7_0_ECX_PKS,},
++    {.attr_index = 31,
++     .cpuid_leaf = 7,
++     .cpuid_subleaf = 0,
++     .cpuid_reg = R_ECX,
++     .feat_mask = CPUID_7_0_ECX_KeyLocker,
++    },
++};
++
++static void tdx_mask_cpuid_by_attrs(uint32_t feature, uint32_t index,
++                                    int reg, uint32_t *value)
++{
++    TdxAttrsMap *map;
++    uint64_t unavail = 0;
++    int i;
++
++    for (i = 0; i < ARRAY_SIZE(tdx_attrs_maps); i++) {
++        map = &tdx_attrs_maps[i];
++
++        if (feature != map->cpuid_leaf || index != map->cpuid_subleaf ||
++            reg != map->cpuid_reg) {
++            continue;
++        }
++
++        if (!((1ULL << map->attr_index) & tdx_caps->supported_attrs)) {
++            unavail |= map->feat_mask;
++        }
++    }
++
++    if (unavail) {
++        *value &= ~unavail;
++    }
++}
++
+ static uint32_t tdx_adjust_cpuid_features(X86ConfidentialGuest *cg,
+                                           uint32_t feature, uint32_t index,
+                                           int reg, uint32_t value)
+@@ -560,6 +612,8 @@ static uint32_t tdx_adjust_cpuid_features(X86ConfidentialGuest *cg,
+         break;
+     }
+ 
++    tdx_mask_cpuid_by_attrs(feature, index, reg, &value);
++
+     e = cpuid_find_entry(&tdx_fixed0_bits.cpuid, feature, index);
+     if (e) {
+         fixed0 = cpuid_entry_get_reg(e, reg);
+-- 
+2.25.1
+

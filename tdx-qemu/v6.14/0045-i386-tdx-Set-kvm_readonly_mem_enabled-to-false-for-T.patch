@@ -1,0 +1,41 @@
+From 499734ef1fdc5562eeec85412ba98c1f28f17bee Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 27 Jan 2022 20:22:23 +0800
+Subject: [PATCH 45/71] i386/tdx: Set kvm_readonly_mem_enabled to false for TDX
+ VM
+
+TDX only supports readonly for shared memory but not for private memory.
+
+In the view of QEMU, it has no idea whether a memslot is used as shared
+memory of private. Thus just mark kvm_readonly_mem_enabled to false to
+TDX VM for simplicity.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+---
+ target/i386/kvm/tdx.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index adcb874b91..1d5c1a523c 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -382,6 +382,15 @@ static int tdx_kvm_init(ConfidentialGuestSupport *cgs, Error **errp)
+         return -EOPNOTSUPP;
+     }
+ 
++    /*
++     * Set kvm_readonly_mem_allowed to false, because TDX only supports readonly
++     * memory for shared memory but not for private memory. Besides, whether a
++     * memslot is private or shared is not determined by QEMU.
++     *
++     * Thus, just mark readonly memory not supported for simplicity.
++     */
++    kvm_readonly_mem_allowed = false;
++
+     qemu_add_machine_init_done_notifier(&tdx_machine_done_notify);
+ 
+     tdx_guest = tdx;
+-- 
+2.25.1
+

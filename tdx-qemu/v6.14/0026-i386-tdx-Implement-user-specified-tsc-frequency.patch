@@ -1,0 +1,91 @@
+From 2d0cf861849dc12fa72ec0e3f051d470ad923030 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Mon, 15 Mar 2021 15:16:55 +0800
+Subject: [PATCH 26/71] i386/tdx: Implement user specified tsc frequency
+
+Reuse "-cpu,tsc-frequency=" to get user wanted tsc frequency and call VM
+scope VM_SET_TSC_KHZ to set the tsc frequency of TD before KVM_TDX_INIT_VM.
+
+Besides, sanity check the tsc frequency to be in the legal range and
+legal granularity (required by TDX module).
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+---
+Changes in v3:
+- use @errp to report error info; (Daniel)
+
+Changes in v1:
+- Use VM scope VM_SET_TSC_KHZ to set the TSC frequency of TD since KVM
+  side drop the @tsc_khz field in struct kvm_tdx_init_vm
+---
+ target/i386/kvm/kvm.c |  9 +++++++++
+ target/i386/kvm/tdx.c | 25 +++++++++++++++++++++++++
+ 2 files changed, 34 insertions(+)
+
+diff --git a/target/i386/kvm/kvm.c b/target/i386/kvm/kvm.c
+index c296f31e10..138341a5cf 100644
+--- a/target/i386/kvm/kvm.c
++++ b/target/i386/kvm/kvm.c
+@@ -872,6 +872,15 @@ static int kvm_arch_set_tsc_khz(CPUState *cs)
+     int r, cur_freq;
+     bool set_ioctl = false;
+ 
++    /*
++     * TSC of TD vcpu is immutable, it cannot be set/changed via vcpu scope
++     * VM_SET_TSC_KHZ, but only be initialized via VM scope VM_SET_TSC_KHZ
++     * before ioctl KVM_TDX_INIT_VM in tdx_pre_create_vcpu()
++     */
++    if (is_tdx_vm()) {
++        return 0;
++    }
++
+     if (!env->tsc_khz) {
+         return 0;
+     }
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index 96138c2d2b..2124284e16 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -20,6 +20,9 @@
+ #include "kvm_i386.h"
+ #include "tdx.h"
+ 
++#define TDX_MIN_TSC_FREQUENCY_KHZ   (100 * 1000)
++#define TDX_MAX_TSC_FREQUENCY_KHZ   (10 * 1000 * 1000)
++
+ #define TDX_TD_ATTRIBUTES_DEBUG             BIT_ULL(0)
+ #define TDX_TD_ATTRIBUTES_SEPT_VE_DISABLE   BIT_ULL(28)
+ #define TDX_TD_ATTRIBUTES_PKS               BIT_ULL(30)
+@@ -266,6 +269,28 @@ int tdx_pre_create_vcpu(CPUState *cpu, Error **errp)
+         return r;
+     }
+ 
++    if (env->tsc_khz && (env->tsc_khz < TDX_MIN_TSC_FREQUENCY_KHZ ||
++                         env->tsc_khz > TDX_MAX_TSC_FREQUENCY_KHZ)) {
++        error_setg(errp, "Invalid TSC %ld KHz, must specify cpu_frequency "
++                         "between [%d, %d] kHz", env->tsc_khz,
++                         TDX_MIN_TSC_FREQUENCY_KHZ, TDX_MAX_TSC_FREQUENCY_KHZ);
++       return -EINVAL;
++    }
++
++    if (env->tsc_khz % (25 * 1000)) {
++        error_setg(errp, "Invalid TSC %ld KHz, it must be multiple of 25MHz",
++                   env->tsc_khz);
++        return -EINVAL;
++    }
++
++    /* it's safe even env->tsc_khz is 0. KVM uses host's tsc_khz in this case */
++    r = kvm_vm_ioctl(kvm_state, KVM_SET_TSC_KHZ, env->tsc_khz);
++    if (r < 0) {
++        error_setg_errno(errp, -r, "Unable to set TSC frequency to %ld kHz",
++                         env->tsc_khz);
++        return r;
++    }
++
+     if (tdx_guest->mrconfigid) {
+         g_autofree uint8_t *data = qbase64_decode(tdx_guest->mrconfigid,
+                               strlen(tdx_guest->mrconfigid), &data_len, errp);
+-- 
+2.25.1
+

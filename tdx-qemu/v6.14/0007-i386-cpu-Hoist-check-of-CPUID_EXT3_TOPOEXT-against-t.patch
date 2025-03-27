@@ -1,0 +1,68 @@
+From 3ca4424e2d9917d50b404844e6fa8eaa85d5b492 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 19 Dec 2024 06:01:22 -0500
+Subject: [PATCH 07/71] i386/cpu: Hoist check of CPUID_EXT3_TOPOEXT against
+ threads_per_core
+
+Now it changes to use env->topo_info.threads_per_core and doesn't depend
+on qemu_init_vcpu() anymore.  Put it together with other feature checks
+before qemu_init_vcpu()
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Link: https://lore.kernel.org/r/20241219110125.1266461-8-xiaoyao.li@intel.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ target/i386/cpu.c | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
+
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index 6ab6a4b570..6bde03df4e 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -7883,6 +7883,21 @@ static void x86_cpu_realizefn(DeviceState *dev, Error **errp)
+      */
+     cpu->mwait.ecx |= CPUID_MWAIT_EMX | CPUID_MWAIT_IBE;
+ 
++    /*
++     * Most Intel and certain AMD CPUs support hyperthreading. Even though QEMU
++     * fixes this issue by adjusting CPUID_0000_0001_EBX and CPUID_8000_0008_ECX
++     * based on inputs (sockets,cores,threads), it is still better to give
++     * users a warning.
++     */
++    if (IS_AMD_CPU(env) &&
++        !(env->features[FEAT_8000_0001_ECX] & CPUID_EXT3_TOPOEXT) &&
++        env->topo_info.threads_per_core > 1) {
++            warn_report_once("This family of AMD CPU doesn't support "
++                             "hyperthreading(%d). Please configure -smp "
++                             "options properly or try enabling topoext "
++                             "feature.", env->topo_info.threads_per_core);
++    }
++
+     /* For 64bit systems think about the number of physical bits to present.
+      * ideally this should be the same as the host; anything other than matching
+      * the host can cause incorrect guest behaviour.
+@@ -7987,21 +8002,6 @@ static void x86_cpu_realizefn(DeviceState *dev, Error **errp)
+     x86_cpu_gdb_init(cs);
+     qemu_init_vcpu(cs);
+ 
+-    /*
+-     * Most Intel and certain AMD CPUs support hyperthreading. Even though QEMU
+-     * fixes this issue by adjusting CPUID_0000_0001_EBX and CPUID_8000_0008_ECX
+-     * based on inputs (sockets,cores,threads), it is still better to give
+-     * users a warning.
+-     */
+-    if (IS_AMD_CPU(env) &&
+-        !(env->features[FEAT_8000_0001_ECX] & CPUID_EXT3_TOPOEXT) &&
+-        env->topo_info.threads_per_core > 1) {
+-            warn_report_once("This family of AMD CPU doesn't support "
+-                             "hyperthreading(%d). Please configure -smp "
+-                             "options properly or try enabling topoext "
+-                             "feature.", env->topo_info.threads_per_core);
+-    }
+-
+ #ifndef CONFIG_USER_ONLY
+     x86_cpu_apic_realize(cpu, &local_err);
+     if (local_err != NULL) {
+-- 
+2.25.1
+

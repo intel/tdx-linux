@@ -1,0 +1,40 @@
+From 20c12762fc603bb4b522d4b2e226a5ef2c41bcfc Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Mon, 5 Aug 2024 10:49:47 -0400
+Subject: [PATCH 42/71] i386/tdx: implement tdx_cpu_instance_init()
+
+Currently, pmu is not supported for TDX by KVM.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+chanegs in v6:
+ - new patch;
+---
+ target/i386/kvm/tdx.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index c949dd7eb1..fdd1ff09b1 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -396,6 +396,11 @@ static int tdx_kvm_type(X86ConfidentialGuest *cg)
+     return KVM_X86_TDX_VM;
+ }
+ 
++static void tdx_cpu_instance_init(X86ConfidentialGuest *cg, CPUState *cpu)
++{
++    object_property_set_bool(OBJECT(cpu), "pmu", false, &error_abort);
++}
++
+ static int tdx_validate_attributes(TdxGuest *tdx, Error **errp)
+ {
+     if ((tdx->attributes & ~tdx_caps->supported_attrs)) {
+@@ -754,4 +759,5 @@ static void tdx_guest_class_init(ObjectClass *oc, void *data)
+ 
+     klass->kvm_init = tdx_kvm_init;
+     x86_klass->kvm_type = tdx_kvm_type;
++    x86_klass->cpu_instance_init = tdx_cpu_instance_init;
+ }
+-- 
+2.25.1
+

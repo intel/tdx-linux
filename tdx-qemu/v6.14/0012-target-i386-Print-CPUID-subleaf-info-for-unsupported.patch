@@ -1,0 +1,34 @@
+From 7c15b0d062565a121f9526540de3244accfe1999 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Mon, 8 Aug 2022 16:58:27 +0800
+Subject: [PATCH 12/71] target/i386: Print CPUID subleaf info for unsupported
+ feature
+
+Some CPUID leaves have meaningful subleaf index. Print the subleaf info
+in feature_word_description for CPUID features.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Reviewed-by: Eduardo Habkost <ehabkost@redhat.com>
+---
+ target/i386/cpu.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index 5d0b9797d7..efd0c8e66a 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -5459,8 +5459,9 @@ static char *feature_word_description(FeatureWordInfo *f)
+         {
+             const char *reg = get_register_name_32(f->cpuid.reg);
+             assert(reg);
+-            return g_strdup_printf("CPUID.%02XH:%s",
+-                                   f->cpuid.eax, reg);
++            return g_strdup_printf("CPUID.%02XH_%02XH:%s",
++                                   f->cpuid.eax,
++                                   f->cpuid.needs_ecx ? f->cpuid.ecx : 0, reg);
+         }
+     case MSR_FEATURE_WORD:
+         return g_strdup_printf("MSR(%02XH)",
+-- 
+2.25.1
+

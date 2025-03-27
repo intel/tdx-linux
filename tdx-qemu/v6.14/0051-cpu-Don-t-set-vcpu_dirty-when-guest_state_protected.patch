@@ -1,0 +1,39 @@
+From 38f35c06f2354e64532a6544c1008b32711e9d31 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Wed, 15 Jan 2025 10:56:00 -0500
+Subject: [PATCH 51/71] cpu: Don't set vcpu_dirty when guest_state_protected
+
+QEMU calls kvm_arch_put_registers() when vcpu_dirty is true in
+kvm_vcpu_exec(). However, for confidential guest, like TDX, putting
+registers is disallowed due to guest state is protected.
+
+Only set vcpu_dirty to true with guest state is not protected when
+creating the vcpu.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+Changes in v7:
+ - new patch to replace "i386/tdx: Don't get/put guest state for TDX VMs"
+   in v6;
+---
+ accel/kvm/kvm-all.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/accel/kvm/kvm-all.c b/accel/kvm/kvm-all.c
+index 4fff2a83ae..b338e0542a 100644
+--- a/accel/kvm/kvm-all.c
++++ b/accel/kvm/kvm-all.c
+@@ -466,7 +466,9 @@ int kvm_create_vcpu(CPUState *cpu)
+ 
+     cpu->kvm_fd = kvm_fd;
+     cpu->kvm_state = s;
+-    cpu->vcpu_dirty = true;
++    if (!s->guest_state_protected) {
++        cpu->vcpu_dirty = true;
++    }
+     cpu->dirty_pages = 0;
+     cpu->throttle_us_per_full = 0;
+ 
+-- 
+2.25.1
+

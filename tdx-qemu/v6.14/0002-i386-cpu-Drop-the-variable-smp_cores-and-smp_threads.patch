@@ -1,0 +1,56 @@
+From ea81915c481213194b8fd1e3fa688cddbebc93ee Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 19 Dec 2024 06:01:17 -0500
+Subject: [PATCH 02/71] i386/cpu: Drop the variable smp_cores and smp_threads
+ in x86_cpu_pre_plug()
+
+No need to define smp_cores and smp_threads, just using ms->smp.cores
+and ms->smp.threads is straightforward. It's also consistent with other
+checks of socket/die/module.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Reviewed-by: Zhao Liu <zhao1.liu@intel.com>
+Link: https://lore.kernel.org/r/20241219110125.1266461-3-xiaoyao.li@intel.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ hw/i386/x86-common.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/hw/i386/x86-common.c b/hw/i386/x86-common.c
+index dadc9d99e7..98047d0141 100644
+--- a/hw/i386/x86-common.c
++++ b/hw/i386/x86-common.c
+@@ -248,8 +248,6 @@ void x86_cpu_pre_plug(HotplugHandler *hotplug_dev,
+     CPUX86State *env = &cpu->env;
+     MachineState *ms = MACHINE(hotplug_dev);
+     X86MachineState *x86ms = X86_MACHINE(hotplug_dev);
+-    unsigned int smp_cores = ms->smp.cores;
+-    unsigned int smp_threads = ms->smp.threads;
+     X86CPUTopoInfo topo_info;
+ 
+     if (!object_dynamic_cast(OBJECT(cpu), ms->cpu_type)) {
+@@ -329,17 +327,17 @@ void x86_cpu_pre_plug(HotplugHandler *hotplug_dev,
+         if (cpu->core_id < 0) {
+             error_setg(errp, "CPU core-id is not set");
+             return;
+-        } else if (cpu->core_id > (smp_cores - 1)) {
++        } else if (cpu->core_id > (ms->smp.cores - 1)) {
+             error_setg(errp, "Invalid CPU core-id: %u must be in range 0:%u",
+-                       cpu->core_id, smp_cores - 1);
++                       cpu->core_id, ms->smp.cores - 1);
+             return;
+         }
+         if (cpu->thread_id < 0) {
+             error_setg(errp, "CPU thread-id is not set");
+             return;
+-        } else if (cpu->thread_id > (smp_threads - 1)) {
++        } else if (cpu->thread_id > (ms->smp.threads - 1)) {
+             error_setg(errp, "Invalid CPU thread-id: %u must be in range 0:%u",
+-                       cpu->thread_id, smp_threads - 1);
++                       cpu->thread_id, ms->smp.threads - 1);
+             return;
+         }
+ 
+-- 
+2.25.1
+

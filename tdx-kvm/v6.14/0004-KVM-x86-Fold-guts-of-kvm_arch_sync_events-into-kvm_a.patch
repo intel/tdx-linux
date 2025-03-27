@@ -1,0 +1,61 @@
+From 634bcfe1b1557fa959b60026e79c544200960046 Mon Sep 17 00:00:00 2001
+From: Sean Christopherson <seanjc@google.com>
+Date: Mon, 24 Feb 2025 15:55:41 -0800
+Subject: [PATCH 004/130] KVM: x86: Fold guts of kvm_arch_sync_events() into
+ kvm_arch_pre_destroy_vm()
+
+Fold the guts of kvm_arch_sync_events() into kvm_arch_pre_destroy_vm(), as
+the kvmclock and PIT background workers only need to be stopped before
+destroying vCPUs (to avoid accessing vCPUs as they are being freed); it's
+a-ok for them to be running while the VM is visible on the global vm_list.
+
+Note, the PIT also needs to be stopped before IRQ routing is freed
+(because KVM's IRQ routing is garbage and assumes there is always non-NULL
+routing).
+
+Opportunistically add comments to explain why KVM stops/frees certain
+assets early.
+
+Signed-off-by: Sean Christopherson <seanjc@google.com>
+Message-ID: <20250224235542.2562848-7-seanjc@google.com>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ arch/x86/kvm/x86.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index 26178c781883..ce6cf1c2aa58 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -12761,9 +12761,7 @@ int kvm_arch_init_vm(struct kvm *kvm, unsigned long type)
+ 
+ void kvm_arch_sync_events(struct kvm *kvm)
+ {
+-	cancel_delayed_work_sync(&kvm->arch.kvmclock_sync_work);
+-	cancel_delayed_work_sync(&kvm->arch.kvmclock_update_work);
+-	kvm_free_pit(kvm);
++
+ }
+ 
+ /**
+@@ -12844,6 +12842,17 @@ EXPORT_SYMBOL_GPL(__x86_set_memory_region);
+ 
+ void kvm_arch_pre_destroy_vm(struct kvm *kvm)
+ {
++	/*
++	 * Stop all background workers and kthreads before destroying vCPUs, as
++	 * iterating over vCPUs in a different task while vCPUs are being freed
++	 * is unsafe, i.e. will lead to use-after-free.  The PIT also needs to
++	 * be stopped before IRQ routing is freed.
++	 */
++	cancel_delayed_work_sync(&kvm->arch.kvmclock_sync_work);
++	cancel_delayed_work_sync(&kvm->arch.kvmclock_update_work);
++
++	kvm_free_pit(kvm);
++
+ 	kvm_mmu_pre_destroy_vm(kvm);
+ }
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,77 @@
+From 32342f4b99a2dafb3ba274993e49d018a615185a Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Mon, 5 Aug 2024 10:46:54 -0400
+Subject: [PATCH 41/71] i386/cpu: introduce
+ x86_confidential_guest_cpu_instance_init()
+
+To allow execute confidential guest specific cpu init operations.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+Changes in v6:
+ - new patch;
+---
+ target/i386/confidential-guest.h | 11 +++++++++++
+ target/i386/cpu.c                | 10 ++++++++++
+ 2 files changed, 21 insertions(+)
+
+diff --git a/target/i386/confidential-guest.h b/target/i386/confidential-guest.h
+index 7342d2843a..38169ed68e 100644
+--- a/target/i386/confidential-guest.h
++++ b/target/i386/confidential-guest.h
+@@ -39,6 +39,7 @@ struct X86ConfidentialGuestClass {
+ 
+     /* <public> */
+     int (*kvm_type)(X86ConfidentialGuest *cg);
++    void (*cpu_instance_init)(X86ConfidentialGuest *cg, CPUState *cpu);
+     uint32_t (*mask_cpuid_features)(X86ConfidentialGuest *cg, uint32_t feature, uint32_t index,
+                                     int reg, uint32_t value);
+ };
+@@ -59,6 +60,16 @@ static inline int x86_confidential_guest_kvm_type(X86ConfidentialGuest *cg)
+     }
+ }
+ 
++static inline void x86_confidential_guest_cpu_instance_init(X86ConfidentialGuest *cg,
++                                                            CPUState *cpu)
++{
++    X86ConfidentialGuestClass *klass = X86_CONFIDENTIAL_GUEST_GET_CLASS(cg);
++
++    if (klass->cpu_instance_init) {
++        klass->cpu_instance_init(cg, cpu);
++    }
++}
++
+ /**
+  * x86_confidential_guest_mask_cpuid_features:
+  *
+diff --git a/target/i386/cpu.c b/target/i386/cpu.c
+index efd0c8e66a..7f6711e205 100644
+--- a/target/i386/cpu.c
++++ b/target/i386/cpu.c
+@@ -36,6 +36,7 @@
+ #include "hw/i386/topology.h"
+ #ifndef CONFIG_USER_ONLY
+ #include "sysemu/reset.h"
++#include "confidential-guest.h"
+ #include "qapi/qapi-commands-machine-target.h"
+ #include "exec/address-spaces.h"
+ #include "hw/boards.h"
+@@ -8156,6 +8157,15 @@ static void x86_cpu_post_initfn(Object *obj)
+     }
+ 
+     accel_cpu_instance_init(CPU(obj));
++
++#ifndef CONFIG_USER_ONLY
++    MachineState *ms = MACHINE(object_dynamic_cast(qdev_get_machine(),
++                                                   TYPE_MACHINE));
++    if (ms && ms->cgs) {
++        x86_confidential_guest_cpu_instance_init(X86_CONFIDENTIAL_GUEST(ms->cgs),
++                                                 (CPU(obj)));
++    }
++#endif
+ }
+ 
+ static void x86_cpu_init_default_topo(X86CPU *cpu)
+-- 
+2.25.1
+

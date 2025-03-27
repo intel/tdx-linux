@@ -1,0 +1,45 @@
+From c191e347d473d58cc918e43225f2aab20641f016 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Mon, 26 Aug 2024 02:21:59 -0700
+Subject: [PATCH 38/71] i386/tdx: Enable user exit on KVM_HC_MAP_GPA_RANGE
+
+KVM translates TDG.VP.VMCALL<MapGPA> to KVM_HC_MAP_GPA_RANGE, and QEMU
+needs to enable user exit on KVM_HC_MAP_GPA_RANGE in order to handle the
+memory conversion requested by TD guest.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+changes in v6:
+ - new patch;
+---
+ target/i386/kvm/tdx.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index df92919711..e6ae6a924a 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -19,6 +19,8 @@
+ #include "sysemu/sysemu.h"
+ #include "exec/ramblock.h"
+ 
++#include <linux/kvm_para.h>
++
+ #include "hw/i386/e820_memory_layout.h"
+ #include "hw/i386/x86.h"
+ #include "hw/i386/tdvf.h"
+@@ -374,6 +376,11 @@ static int tdx_kvm_init(ConfidentialGuestSupport *cgs, Error **errp)
+         }
+     }
+ 
++    /* TDX relies on KVM_HC_MAP_GPA_RANGE to handle TDG.VP.VMCALL<MapGPA> */
++    if (!kvm_enable_hypercall(BIT_ULL(KVM_HC_MAP_GPA_RANGE))) {
++        return -EOPNOTSUPP;
++    }
++
+     qemu_add_machine_init_done_notifier(&tdx_machine_done_notify);
+ 
+     tdx_guest = tdx;
+-- 
+2.25.1
+

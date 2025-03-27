@@ -1,0 +1,147 @@
+From adbe3db49022e18d8a40c8df6ae1e55818d3ac8b Mon Sep 17 00:00:00 2001
+From: Chenyi Qiang <chenyi.qiang@intel.com>
+Date: Mon, 9 Dec 2024 17:31:01 +0800
+Subject: [PATCH 65/71] memory: Export a helper to get intersection of a
+ MemoryRegionSection with a given range
+
+Rename the helper to memory_region_section_intersect_range() to make it
+more generic. Meanwhile, define the @end as Int128 and replace the
+related operations with Int128_* format since the helper is exported as
+a wider API.
+
+Suggested-by: Alexey Kardashevskiy <aik@amd.com>
+Reviewed-by: David Hildenbrand <david@redhat.com>
+Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
+---
+Changes in v3:
+    - No change
+
+Changes in v2:
+    - Make memory_region_section_intersect_range() an inline function.
+    - Add Reviewed-by from David
+    - Define the @end as Int128 and use the related Int128_* ops as a wilder
+      API (Alexey)
+---
+ hw/virtio/virtio-mem.c | 32 +++++---------------------------
+ include/exec/memory.h  | 27 +++++++++++++++++++++++++++
+ 2 files changed, 32 insertions(+), 27 deletions(-)
+
+diff --git a/hw/virtio/virtio-mem.c b/hw/virtio/virtio-mem.c
+index 80ada89551..e3d1ccaeeb 100644
+--- a/hw/virtio/virtio-mem.c
++++ b/hw/virtio/virtio-mem.c
+@@ -242,28 +242,6 @@ static int virtio_mem_for_each_plugged_range(VirtIOMEM *vmem, void *arg,
+     return ret;
+ }
+ 
+-/*
+- * Adjust the memory section to cover the intersection with the given range.
+- *
+- * Returns false if the intersection is empty, otherwise returns true.
+- */
+-static bool virtio_mem_intersect_memory_section(MemoryRegionSection *s,
+-                                                uint64_t offset, uint64_t size)
+-{
+-    uint64_t start = MAX(s->offset_within_region, offset);
+-    uint64_t end = MIN(s->offset_within_region + int128_get64(s->size),
+-                       offset + size);
+-
+-    if (end <= start) {
+-        return false;
+-    }
+-
+-    s->offset_within_address_space += start - s->offset_within_region;
+-    s->offset_within_region = start;
+-    s->size = int128_make64(end - start);
+-    return true;
+-}
+-
+ typedef int (*virtio_mem_section_cb)(MemoryRegionSection *s, void *arg);
+ 
+ static int virtio_mem_for_each_plugged_section(const VirtIOMEM *vmem,
+@@ -285,7 +263,7 @@ static int virtio_mem_for_each_plugged_section(const VirtIOMEM *vmem,
+                                       first_bit + 1) - 1;
+         size = (last_bit - first_bit + 1) * vmem->block_size;
+ 
+-        if (!virtio_mem_intersect_memory_section(&tmp, offset, size)) {
++        if (!memory_region_section_intersect_range(&tmp, offset, size)) {
+             break;
+         }
+         ret = cb(&tmp, arg);
+@@ -317,7 +295,7 @@ static int virtio_mem_for_each_unplugged_section(const VirtIOMEM *vmem,
+                                  first_bit + 1) - 1;
+         size = (last_bit - first_bit + 1) * vmem->block_size;
+ 
+-        if (!virtio_mem_intersect_memory_section(&tmp, offset, size)) {
++        if (!memory_region_section_intersect_range(&tmp, offset, size)) {
+             break;
+         }
+         ret = cb(&tmp, arg);
+@@ -353,7 +331,7 @@ static void virtio_mem_notify_unplug(VirtIOMEM *vmem, uint64_t offset,
+     QLIST_FOREACH(rdl, &vmem->rdl_list, next) {
+         MemoryRegionSection tmp = *rdl->section;
+ 
+-        if (!virtio_mem_intersect_memory_section(&tmp, offset, size)) {
++        if (!memory_region_section_intersect_range(&tmp, offset, size)) {
+             continue;
+         }
+         rdl->notify_discard(rdl, &tmp);
+@@ -369,7 +347,7 @@ static int virtio_mem_notify_plug(VirtIOMEM *vmem, uint64_t offset,
+     QLIST_FOREACH(rdl, &vmem->rdl_list, next) {
+         MemoryRegionSection tmp = *rdl->section;
+ 
+-        if (!virtio_mem_intersect_memory_section(&tmp, offset, size)) {
++        if (!memory_region_section_intersect_range(&tmp, offset, size)) {
+             continue;
+         }
+         ret = rdl->notify_populate(rdl, &tmp);
+@@ -386,7 +364,7 @@ static int virtio_mem_notify_plug(VirtIOMEM *vmem, uint64_t offset,
+             if (rdl2 == rdl) {
+                 break;
+             }
+-            if (!virtio_mem_intersect_memory_section(&tmp, offset, size)) {
++            if (!memory_region_section_intersect_range(&tmp, offset, size)) {
+                 continue;
+             }
+             rdl2->notify_discard(rdl2, &tmp);
+diff --git a/include/exec/memory.h b/include/exec/memory.h
+index 9458e2801d..ab5e9237bd 100644
+--- a/include/exec/memory.h
++++ b/include/exec/memory.h
+@@ -1203,6 +1203,33 @@ MemoryRegionSection *memory_region_section_new_copy(MemoryRegionSection *s);
+  */
+ void memory_region_section_free_copy(MemoryRegionSection *s);
+ 
++/**
++ * memory_region_section_intersect_range: Adjust the memory section to cover
++ * the intersection with the given range.
++ *
++ * @s: the #MemoryRegionSection to be adjusted
++ * @offset: the offset of the given range in the memory region
++ * @size: the size of the given range
++ *
++ * Returns false if the intersection is empty, otherwise returns true.
++ */
++static inline bool memory_region_section_intersect_range(MemoryRegionSection *s,
++                                                         uint64_t offset, uint64_t size)
++{
++    uint64_t start = MAX(s->offset_within_region, offset);
++    Int128 end = int128_min(int128_add(int128_make64(s->offset_within_region), s->size),
++                            int128_add(int128_make64(offset), int128_make64(size)));
++
++    if (int128_le(end, int128_make64(start))) {
++        return false;
++    }
++
++    s->offset_within_address_space += start - s->offset_within_region;
++    s->offset_within_region = start;
++    s->size = int128_sub(end, int128_make64(start));
++    return true;
++}
++
+ /**
+  * memory_region_init: Initialize a memory region
+  *
+-- 
+2.25.1
+

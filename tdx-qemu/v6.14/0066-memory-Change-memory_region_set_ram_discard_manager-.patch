@@ -1,0 +1,141 @@
+From 30e256c549b49c0f0fc134a5bef7b34c4a69b545 Mon Sep 17 00:00:00 2001
+From: Chenyi Qiang <chenyi.qiang@intel.com>
+Date: Tue, 11 Feb 2025 11:39:01 +0800
+Subject: [PATCH 66/71] memory: Change memory_region_set_ram_discard_manager()
+ to return the result
+
+Modify memory_region_set_ram_discard_manager() to return false if a
+RamDiscardManager is already set in the MemoryRegion. The caller must
+handle this failure, such as having virtio-mem undo its actions and fail
+the realize() process. Opportunistically move the call earlier to avoid
+complex error handling.
+
+This change is beneficial when introducing a new RamDiscardManager
+instance besides virtio-mem. After
+ram_block_coordinated_discard_require(true) unlocks all
+RamDiscardManager instances, only one instance is allowed to be set for
+a MemoryRegion at present.
+
+Suggested-by: David Hildenbrand <david@redhat.com>
+Signed-off-by: Chenyi Qiang <chenyi.qiang@intel.com>
+---
+Changes in v3:
+    - Move set_ram_discard_manager() up to avoid a g_free()
+    - Clean up set_ram_discard_manager() definition
+
+Changes in v2:
+    - newly added.
+---
+ hw/virtio/virtio-mem.c | 28 ++++++++++++++++------------
+ include/exec/memory.h  |  6 +++---
+ system/memory.c        | 10 +++++++---
+ 3 files changed, 26 insertions(+), 18 deletions(-)
+
+diff --git a/hw/virtio/virtio-mem.c b/hw/virtio/virtio-mem.c
+index e3d1ccaeeb..1f42d2f5ed 100644
+--- a/hw/virtio/virtio-mem.c
++++ b/hw/virtio/virtio-mem.c
+@@ -1046,6 +1046,17 @@ static void virtio_mem_device_realize(DeviceState *dev, Error **errp)
+         return;
+     }
+ 
++    /*
++     * Set ourselves as RamDiscardManager before the plug handler maps the
++     * memory region and exposes it via an address space.
++     */
++    if (memory_region_set_ram_discard_manager(&vmem->memdev->mr,
++                                              RAM_DISCARD_MANAGER(vmem))) {
++        error_setg(errp, "Failed to set RamDiscardManager");
++        ram_block_coordinated_discard_require(false);
++        return;
++    }
++
+     /*
+      * We don't know at this point whether shared RAM is migrated using
+      * QEMU or migrated using the file content. "x-ignore-shared" will be
+@@ -1100,13 +1111,6 @@ static void virtio_mem_device_realize(DeviceState *dev, Error **errp)
+                              &vmstate_virtio_mem_device_early, vmem);
+     }
+     qemu_register_resettable(OBJECT(vmem));
+-
+-    /*
+-     * Set ourselves as RamDiscardManager before the plug handler maps the
+-     * memory region and exposes it via an address space.
+-     */
+-    memory_region_set_ram_discard_manager(&vmem->memdev->mr,
+-                                          RAM_DISCARD_MANAGER(vmem));
+ }
+ 
+ static void virtio_mem_device_unrealize(DeviceState *dev)
+@@ -1114,11 +1118,6 @@ static void virtio_mem_device_unrealize(DeviceState *dev)
+     VirtIODevice *vdev = VIRTIO_DEVICE(dev);
+     VirtIOMEM *vmem = VIRTIO_MEM(dev);
+ 
+-    /*
+-     * The unplug handler unmapped the memory region, it cannot be
+-     * found via an address space anymore. Unset ourselves.
+-     */
+-    memory_region_set_ram_discard_manager(&vmem->memdev->mr, NULL);
+     qemu_unregister_resettable(OBJECT(vmem));
+     if (vmem->early_migration) {
+         vmstate_unregister(VMSTATE_IF(vmem), &vmstate_virtio_mem_device_early,
+@@ -1129,6 +1128,11 @@ static void virtio_mem_device_unrealize(DeviceState *dev)
+     virtio_del_queue(vdev, 0);
+     virtio_cleanup(vdev);
+     g_free(vmem->bitmap);
++    /*
++     * The unplug handler unmapped the memory region, it cannot be
++     * found via an address space anymore. Unset ourselves.
++     */
++    memory_region_set_ram_discard_manager(&vmem->memdev->mr, NULL);
+     ram_block_coordinated_discard_require(false);
+ }
+ 
+diff --git a/include/exec/memory.h b/include/exec/memory.h
+index ab5e9237bd..9dc9ae1814 100644
+--- a/include/exec/memory.h
++++ b/include/exec/memory.h
+@@ -2488,13 +2488,13 @@ static inline bool memory_region_has_ram_discard_manager(MemoryRegion *mr)
+  *
+  * This function must not be called for a mapped #MemoryRegion, a #MemoryRegion
+  * that does not cover RAM, or a #MemoryRegion that already has a
+- * #RamDiscardManager assigned.
++ * #RamDiscardManager assigned. Return 0 if the rdm is set successfully.
+  *
+  * @mr: the #MemoryRegion
+  * @rdm: #RamDiscardManager to set
+  */
+-void memory_region_set_ram_discard_manager(MemoryRegion *mr,
+-                                           RamDiscardManager *rdm);
++int memory_region_set_ram_discard_manager(MemoryRegion *mr,
++                                          RamDiscardManager *rdm);
+ 
+ /**
+  * memory_region_find: translate an address/size relative to a
+diff --git a/system/memory.c b/system/memory.c
+index 85f6834cb3..0fd2fa5452 100644
+--- a/system/memory.c
++++ b/system/memory.c
+@@ -2115,12 +2115,16 @@ RamDiscardManager *memory_region_get_ram_discard_manager(MemoryRegion *mr)
+     return mr->rdm;
+ }
+ 
+-void memory_region_set_ram_discard_manager(MemoryRegion *mr,
+-                                           RamDiscardManager *rdm)
++int memory_region_set_ram_discard_manager(MemoryRegion *mr,
++                                          RamDiscardManager *rdm)
+ {
+     g_assert(memory_region_is_ram(mr));
+-    g_assert(!rdm || !mr->rdm);
++    if (mr->rdm && rdm) {
++        return -EBUSY;
++    }
++
+     mr->rdm = rdm;
++    return 0;
+ }
+ 
+ uint64_t ram_discard_manager_get_min_granularity(const RamDiscardManager *rdm,
+-- 
+2.25.1
+

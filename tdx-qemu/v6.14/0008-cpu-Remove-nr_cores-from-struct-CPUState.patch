@@ -1,0 +1,64 @@
+From 9b2cef1fb0e165b2e1d063cf8b82fff530c548d9 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 19 Dec 2024 06:01:23 -0500
+Subject: [PATCH 08/71] cpu: Remove nr_cores from struct CPUState
+
+There is no user of it now, remove it.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Reviewed-by: Zhao Liu <zhao1.liu@intel.com>
+Link: https://lore.kernel.org/r/20241219110125.1266461-9-xiaoyao.li@intel.com
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ hw/core/cpu-common.c  | 1 -
+ include/hw/core/cpu.h | 2 --
+ system/cpus.c         | 1 -
+ 3 files changed, 4 deletions(-)
+
+diff --git a/hw/core/cpu-common.c b/hw/core/cpu-common.c
+index 09c7903594..77089d4ed3 100644
+--- a/hw/core/cpu-common.c
++++ b/hw/core/cpu-common.c
+@@ -243,7 +243,6 @@ static void cpu_common_initfn(Object *obj)
+     cpu->cluster_index = UNASSIGNED_CLUSTER_INDEX;
+     /* user-mode doesn't have configurable SMP topology */
+     /* the default value is changed by qemu_init_vcpu() for system-mode */
+-    cpu->nr_cores = 1;
+     cpu->nr_threads = 1;
+     cpu->cflags_next_tb = -1;
+ 
+diff --git a/include/hw/core/cpu.h b/include/hw/core/cpu.h
+index c3ca0babcb..fb397cdfc5 100644
+--- a/include/hw/core/cpu.h
++++ b/include/hw/core/cpu.h
+@@ -407,7 +407,6 @@ struct qemu_work_item;
+  *   Under TCG this value is propagated to @tcg_cflags.
+  *   See TranslationBlock::TCG CF_CLUSTER_MASK.
+  * @tcg_cflags: Pre-computed cflags for this cpu.
+- * @nr_cores: Number of cores within this CPU package.
+  * @nr_threads: Number of threads within this CPU core.
+  * @thread: Host thread details, only live once @created is #true
+  * @sem: WIN32 only semaphore used only for qtest
+@@ -466,7 +465,6 @@ struct CPUState {
+     CPUClass *cc;
+     /*< public >*/
+ 
+-    int nr_cores;
+     int nr_threads;
+ 
+     struct QemuThread *thread;
+diff --git a/system/cpus.c b/system/cpus.c
+index 1c818ff682..909d8128e8 100644
+--- a/system/cpus.c
++++ b/system/cpus.c
+@@ -666,7 +666,6 @@ void qemu_init_vcpu(CPUState *cpu)
+ {
+     MachineState *ms = MACHINE(qdev_get_machine());
+ 
+-    cpu->nr_cores = machine_topo_get_cores_per_socket(ms);
+     cpu->nr_threads =  ms->smp.threads;
+     cpu->stopped = true;
+     cpu->random_seed = qemu_guest_random_seed_thread_part1();
+-- 
+2.25.1
+

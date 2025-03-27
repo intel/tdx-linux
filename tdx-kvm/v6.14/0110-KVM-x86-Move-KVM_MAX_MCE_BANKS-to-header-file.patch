@@ -1,0 +1,46 @@
+From dc6649712fb7b90cda13dcae923b6e28444cd261 Mon Sep 17 00:00:00 2001
+From: Isaku Yamahata <isaku.yamahata@intel.com>
+Date: Thu, 27 Feb 2025 09:20:08 +0800
+Subject: [PATCH 110/130] KVM: x86: Move KVM_MAX_MCE_BANKS to header file
+
+Move KVM_MAX_MCE_BANKS to header file so that it can be used for TDX in
+a future patch.
+
+Signed-off-by: Isaku Yamahata <isaku.yamahata@intel.com>
+[binbin: split into new patch]
+Signed-off-by: Binbin Wu <binbin.wu@linux.intel.com>
+Message-ID: <20250227012021.1778144-8-binbin.wu@linux.intel.com>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ arch/x86/kvm/x86.c | 1 -
+ arch/x86/kvm/x86.h | 2 ++
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index 6ff04769d06d..0b40495910f3 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -90,7 +90,6 @@
+ #include "trace.h"
+ 
+ #define MAX_IO_MSRS 256
+-#define KVM_MAX_MCE_BANKS 32
+ 
+ /*
+  * Note, kvm_caps fields should *never* have default values, all fields must be
+diff --git a/arch/x86/kvm/x86.h b/arch/x86/kvm/x86.h
+index 8b27f70c6321..8ce6da98b5a2 100644
+--- a/arch/x86/kvm/x86.h
++++ b/arch/x86/kvm/x86.h
+@@ -10,6 +10,8 @@
+ #include "kvm_emulate.h"
+ #include "cpuid.h"
+ 
++#define KVM_MAX_MCE_BANKS 32
++
+ struct kvm_caps {
+ 	/* control of guest tsc rate supported? */
+ 	bool has_tsc_control;
+-- 
+2.25.1
+

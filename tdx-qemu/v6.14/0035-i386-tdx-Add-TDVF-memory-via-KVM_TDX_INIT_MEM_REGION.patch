@@ -1,0 +1,94 @@
+From 4dfd9d8f79ef685201abcc075fa93249bc644ddc Mon Sep 17 00:00:00 2001
+From: Isaku Yamahata <isaku.yamahata@intel.com>
+Date: Thu, 9 Jul 2020 10:44:16 -0700
+Subject: [PATCH 35/71] i386/tdx: Add TDVF memory via KVM_TDX_INIT_MEM_REGION
+
+TDVF firmware (CODE and VARS) needs to be copied to TD's private
+memory via KVM_TDX_INIT_MEM_REGION, as well as TD HOB and TEMP memory.
+
+If the TDVF section has TDVF_SECTION_ATTRIBUTES_MR_EXTEND set in the
+flag, calling KVM_TDX_EXTEND_MEMORY to extend the measurement.
+
+After populating the TDVF memory, the original image located in shared
+ramblock can be discarded.
+
+Signed-off-by: Isaku Yamahata <isaku.yamahata@intel.com>
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+---
+Changes in v6:
+ - switch back to use KVM_TDX_INIT_MEM_REGION according to KVM's change;
+---
+ target/i386/kvm/tdx.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index 9abcfe90fe..7a01d65428 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -17,6 +17,7 @@
+ #include "qom/object_interfaces.h"
+ #include "crypto/hash.h"
+ #include "sysemu/sysemu.h"
++#include "exec/ramblock.h"
+ 
+ #include "hw/i386/e820_memory_layout.h"
+ #include "hw/i386/x86.h"
+@@ -270,6 +271,9 @@ static void tdx_finalize_vm(Notifier *notifier, void *unused)
+ {
+     TdxFirmware *tdvf = &tdx_guest->tdvf;
+     TdxFirmwareEntry *entry;
++    RAMBlock *ram_block;
++    Error *local_err = NULL;
++    int r;
+ 
+     tdx_init_ram_entries();
+ 
+@@ -295,6 +299,44 @@ static void tdx_finalize_vm(Notifier *notifier, void *unused)
+           sizeof(TdxRamEntry), &tdx_ram_entry_compare);
+ 
+     tdvf_hob_create(tdx_guest, tdx_get_hob_entry(tdx_guest));
++
++    for_each_tdx_fw_entry(tdvf, entry) {
++        struct kvm_tdx_init_mem_region region;
++        uint32_t flags;
++
++        region = (struct kvm_tdx_init_mem_region) {
++            .source_addr = (uint64_t)entry->mem_ptr,
++            .gpa = entry->address,
++            .nr_pages = entry->size >> 12,
++        };
++
++        flags = entry->attributes & TDVF_SECTION_ATTRIBUTES_MR_EXTEND ?
++                KVM_TDX_MEASURE_MEMORY_REGION : 0;
++
++        do {
++            error_free(local_err);
++            local_err = NULL;
++            r = tdx_vcpu_ioctl(first_cpu, KVM_TDX_INIT_MEM_REGION, flags,
++                               &region, &local_err);
++        } while (r == -EAGAIN || r == -EINTR);
++        if (r < 0) {
++            error_report_err(local_err);
++            exit(1);
++        }
++
++        if (entry->type == TDVF_SECTION_TYPE_TD_HOB ||
++            entry->type == TDVF_SECTION_TYPE_TEMP_MEM) {
++            qemu_ram_munmap(-1, entry->mem_ptr, entry->size);
++            entry->mem_ptr = NULL;
++        }
++    }
++
++    /*
++     * TDVF image has been copied into private region above via
++     * KVM_MEMORY_MAPPING. It becomes useless.
++     */
++    ram_block = tdx_guest->tdvf_mr->ram_block;
++    ram_block_discard_range(ram_block, 0, ram_block->max_length);
+ }
+ 
+ static Notifier tdx_machine_done_notify = {
+-- 
+2.25.1
+

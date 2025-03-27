@@ -1,0 +1,94 @@
+From 6a2e2e770234f9304807d2daa05168a7de4ca28b Mon Sep 17 00:00:00 2001
+From: Sean Christopherson <seanjc@google.com>
+Date: Mon, 24 Feb 2025 15:55:40 -0800
+Subject: [PATCH 003/130] KVM: x86: Unload MMUs during vCPU destruction, not
+ before
+
+When destroying a VM, unload a vCPU's MMUs as part of normal vCPU freeing,
+instead of as a separate prepratory action.  Unloading MMUs ahead of time
+is a holdover from commit 7b53aa565084 ("KVM: Fix vcpu freeing for guest
+smp"), which "fixed" a rather egregious flaw where KVM would attempt to
+free *all* MMU pages when destroying a vCPU.
+
+At the time, KVM would spin on all MMU pages in a VM when free a single
+vCPU, and so would hang due to the way KVM pins and zaps root pages
+(roots are invalidated but not freed if they are pinned by a vCPU).
+
+  static void free_mmu_pages(struct kvm_vcpu *vcpu)
+  {
+        struct kvm_mmu_page *page;
+
+        while (!list_empty(&vcpu->kvm->active_mmu_pages)) {
+                page = container_of(vcpu->kvm->active_mmu_pages.next,
+                                    struct kvm_mmu_page, link);
+                kvm_mmu_zap_page(vcpu->kvm, page);
+        }
+        free_page((unsigned long)vcpu->mmu.pae_root);
+  }
+
+Now that KVM doesn't try to free all MMU pages when destroying a single
+vCPU, there's no need to unpin roots prior to destroying a vCPU.
+
+Note!  While KVM mostly destroys all MMUs before calling
+kvm_arch_destroy_vm() (see commit f00be0cae4e6 ("KVM: MMU: do not free
+active mmu pages in free_mmu_pages()")), unpinning MMU roots during vCPU
+destruction will unfortunately trigger remote TLB flushes, i.e. will try
+to send requests to all vCPUs.
+
+Happily, thanks to commit 27592ae8dbe4 ("KVM: Move wiping of the kvm->vcpus
+array to common code"), that's a non-issue as freed vCPUs are naturally
+skipped by xa_for_each_range(), i.e. by kvm_for_each_vcpu().  Prior to that
+commit, KVM x86 rather stupidly freed vCPUs one-by-one, and _then_
+nullified them, one-by-one.  I.e. triggering a VM-wide request would hit a
+use-after-free.
+
+Signed-off-by: Sean Christopherson <seanjc@google.com>
+Message-ID: <20250224235542.2562848-6-seanjc@google.com>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ arch/x86/kvm/x86.c | 15 +++------------
+ 1 file changed, 3 insertions(+), 12 deletions(-)
+
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+index a80a588b567e..26178c781883 100644
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -12363,6 +12363,9 @@ void kvm_arch_vcpu_destroy(struct kvm_vcpu *vcpu)
+ {
+ 	int idx;
+ 
++	kvm_clear_async_pf_completion_queue(vcpu);
++	kvm_mmu_unload(vcpu);
++
+ 	kvmclock_reset(vcpu);
+ 
+ 	kvm_x86_call(vcpu_free)(vcpu);
+@@ -12756,17 +12759,6 @@ int kvm_arch_init_vm(struct kvm *kvm, unsigned long type)
+ 	return ret;
+ }
+ 
+-static void kvm_unload_vcpu_mmus(struct kvm *kvm)
+-{
+-	unsigned long i;
+-	struct kvm_vcpu *vcpu;
+-
+-	kvm_for_each_vcpu(i, vcpu, kvm) {
+-		kvm_clear_async_pf_completion_queue(vcpu);
+-		kvm_mmu_unload(vcpu);
+-	}
+-}
+-
+ void kvm_arch_sync_events(struct kvm *kvm)
+ {
+ 	cancel_delayed_work_sync(&kvm->arch.kvmclock_sync_work);
+@@ -12871,7 +12863,6 @@ void kvm_arch_destroy_vm(struct kvm *kvm)
+ 		__x86_set_memory_region(kvm, TSS_PRIVATE_MEMSLOT, 0, 0);
+ 		mutex_unlock(&kvm->slots_lock);
+ 	}
+-	kvm_unload_vcpu_mmus(kvm);
+ 	kvm_destroy_vcpus(kvm);
+ 	kvm_x86_call(vm_destroy)(kvm);
+ 	kvm_free_msr_filter(srcu_dereference_check(kvm->arch.msr_filter, &kvm->srcu, 1));
+-- 
+2.25.1
+

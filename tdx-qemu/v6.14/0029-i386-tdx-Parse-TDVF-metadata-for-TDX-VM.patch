@@ -1,0 +1,99 @@
+From 0a63802f8db915cadb5509d7762ecf5d6e519fa5 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Thu, 27 Jan 2022 14:09:28 +0800
+Subject: [PATCH 29/71] i386/tdx: Parse TDVF metadata for TDX VM
+
+After TDVF is loaded to bios MemoryRegion, it needs parse TDVF metadata.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+Acked-by: Gerd Hoffmann <kraxel@redhat.com>
+---
+ hw/i386/pc_sysfw.c         | 7 +++++++
+ target/i386/kvm/tdx-stub.c | 5 +++++
+ target/i386/kvm/tdx.c      | 5 +++++
+ target/i386/kvm/tdx.h      | 3 +++
+ 4 files changed, 20 insertions(+)
+
+diff --git a/hw/i386/pc_sysfw.c b/hw/i386/pc_sysfw.c
+index ef80281d28..5a373bf129 100644
+--- a/hw/i386/pc_sysfw.c
++++ b/hw/i386/pc_sysfw.c
+@@ -37,6 +37,7 @@
+ #include "hw/block/flash.h"
+ #include "sysemu/kvm.h"
+ #include "sev.h"
++#include "kvm/tdx.h"
+ 
+ #define FLASH_SECTOR_SIZE 4096
+ 
+@@ -280,5 +281,11 @@ void x86_firmware_configure(hwaddr gpa, void *ptr, int size)
+         }
+ 
+         sev_encrypt_flash(gpa, ptr, size, &error_fatal);
++    } else if (is_tdx_vm()) {
++        ret = tdx_parse_tdvf(ptr, size);
++        if (ret) {
++            error_report("failed to parse TDVF for TDX VM");
++            exit(1);
++        }
+     }
+ }
+diff --git a/target/i386/kvm/tdx-stub.c b/target/i386/kvm/tdx-stub.c
+index 2344433594..7748b6d0a4 100644
+--- a/target/i386/kvm/tdx-stub.c
++++ b/target/i386/kvm/tdx-stub.c
+@@ -8,3 +8,8 @@ int tdx_pre_create_vcpu(CPUState *cpu, Error **errp)
+ {
+     return -EINVAL;
+ }
++
++int tdx_parse_tdvf(void *flash_ptr, int size)
++{
++    return -EINVAL;
++}
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index f1c0553e6d..73f90b0a22 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -370,6 +370,11 @@ int tdx_pre_create_vcpu(CPUState *cpu, Error **errp)
+     return 0;
+ }
+ 
++int tdx_parse_tdvf(void *flash_ptr, int size)
++{
++    return tdvf_parse_metadata(&tdx_guest->tdvf, flash_ptr, size);
++}
++
+ static bool tdx_guest_get_sept_ve_disable(Object *obj, Error **errp)
+ {
+     TdxGuest *tdx = TDX_GUEST(obj);
+diff --git a/target/i386/kvm/tdx.h b/target/i386/kvm/tdx.h
+index b73461b8d8..28a03c2a7b 100644
+--- a/target/i386/kvm/tdx.h
++++ b/target/i386/kvm/tdx.h
+@@ -8,6 +8,7 @@
+ #endif
+ 
+ #include "confidential-guest.h"
++#include "hw/i386/tdvf.h"
+ 
+ #define TYPE_TDX_GUEST "tdx-guest"
+ #define TDX_GUEST(obj)  OBJECT_CHECK(TdxGuest, (obj), TYPE_TDX_GUEST)
+@@ -32,6 +33,7 @@ typedef struct TdxGuest {
+     char *mrownerconfig;    /* base64 encoded sha348 digest */
+ 
+     MemoryRegion *tdvf_mr;
++    TdxFirmware tdvf;
+ } TdxGuest;
+ 
+ #ifdef CONFIG_TDX
+@@ -42,5 +44,6 @@ bool is_tdx_vm(void);
+ 
+ int tdx_pre_create_vcpu(CPUState *cpu, Error **errp);
+ void tdx_set_tdvf_region(MemoryRegion *tdvf_mr);
++int tdx_parse_tdvf(void *flash_ptr, int size);
+ 
+ #endif /* QEMU_I386_TDX_H */
+-- 
+2.25.1
+

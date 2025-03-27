@@ -1,0 +1,50 @@
+From 4211390864daec429e96de77af2cbae0783ce2c1 Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Wed, 15 Jan 2025 10:31:16 -0500
+Subject: [PATCH 50/71] i386/apic: Skip kvm_apic_put() for TDX
+
+KVM neithers allow writing to MSR_IA32_APICBASE for TDs, nor allow for
+KVM_SET_LAPIC[*].
+
+Note, KVM_GET_LAPIC is also disallowed for TDX. It is called in the path
+
+  do_kvm_cpu_synchronize_state()
+  -> kvm_arch_get_registers()
+     -> kvm_get_apic()
+
+and it's already disllowed for confidential guest through
+guest_state_protected.
+
+[*] https://lore.kernel.org/all/Z3w4Ku4Jq0CrtXne@google.com/
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+ hw/i386/kvm/apic.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/hw/i386/kvm/apic.c b/hw/i386/kvm/apic.c
+index a72c28e8a7..80fc9c0029 100644
+--- a/hw/i386/kvm/apic.c
++++ b/hw/i386/kvm/apic.c
+@@ -17,6 +17,7 @@
+ #include "sysemu/hw_accel.h"
+ #include "sysemu/kvm.h"
+ #include "kvm/kvm_i386.h"
++#include "kvm/tdx.h"
+ 
+ static inline void kvm_apic_set_reg(struct kvm_lapic_state *kapic,
+                                     int reg_id, uint32_t val)
+@@ -141,6 +142,10 @@ static void kvm_apic_put(CPUState *cs, run_on_cpu_data data)
+     struct kvm_lapic_state kapic;
+     int ret;
+ 
++    if(is_tdx_vm()) {
++        return;
++    }
++
+     kvm_put_apicbase(s->cpu, s->apicbase);
+     kvm_put_apic_state(s, &kapic);
+ 
+-- 
+2.25.1
+

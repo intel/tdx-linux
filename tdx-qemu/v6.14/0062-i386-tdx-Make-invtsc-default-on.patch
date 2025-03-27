@@ -1,0 +1,29 @@
+From 0dd723e26214879d2d8a0270bef7ad18fa6a508d Mon Sep 17 00:00:00 2001
+From: Xiaoyao Li <xiaoyao.li@intel.com>
+Date: Tue, 27 Aug 2024 02:16:07 -0400
+Subject: [PATCH 62/71] i386/tdx: Make invtsc default on
+
+Because it's fixed1 bit that enforced by TDX module.
+
+Signed-off-by: Xiaoyao Li <xiaoyao.li@intel.com>
+---
+ target/i386/kvm/tdx.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/target/i386/kvm/tdx.c b/target/i386/kvm/tdx.c
+index 19c38438d5..f51c216133 100644
+--- a/target/i386/kvm/tdx.c
++++ b/target/i386/kvm/tdx.c
+@@ -439,6 +439,9 @@ static void tdx_cpu_instance_init(X86ConfidentialGuest *cg, CPUState *cpu)
+ 
+     object_property_set_bool(OBJECT(cpu), "pmu", false, &error_abort);
+ 
++    /* invtsc is fixed1 for TD guest */
++    object_property_set_bool(OBJECT(cpu), "invtsc", true, &error_abort);
++
+     x86cpu->enable_cpuid_0x1f = true;
+ }
+ 
+-- 
+2.25.1
+

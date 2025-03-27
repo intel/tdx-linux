@@ -1,0 +1,110 @@
+From c6101429343ddd839185f5f4338f4077d8abcef6 Mon Sep 17 00:00:00 2001
+From: Kai Huang <kai.huang@intel.com>
+Date: Fri, 15 Nov 2024 22:52:40 +1300
+Subject: [PATCH 019/130] KVM: Export hardware virtualization
+ enabling/disabling functions
+
+To support TDX, KVM will need to enable TDX during KVM module loading
+time.  Enabling TDX requires enabling hardware virtualization first so
+that all online CPUs (and the new CPU going online) are in post-VMXON
+state.
+
+KVM by default enables hardware virtualization but that is done in
+kvm_init(), which must be the last step after all initialization is done
+thus is too late for enabling TDX.
+
+Export functions to enable/disable hardware virtualization so that TDX
+code can use them to handle hardware virtualization enabling before
+kvm_init().
+
+Signed-off-by: Kai Huang <kai.huang@intel.com>
+Message-ID: <dfe17314c0d9978b7bc3b0833dff6f167fbd28f5.1731664295.git.kai.huang@intel.com>
+Signed-off-by: Paolo Bonzini <pbonzini@redhat.com>
+---
+ include/linux/kvm_host.h |  8 ++++++++
+ virt/kvm/kvm_main.c      | 18 ++++--------------
+ 2 files changed, 12 insertions(+), 14 deletions(-)
+
+diff --git a/include/linux/kvm_host.h b/include/linux/kvm_host.h
+index ba6f29872ab2..482979d08751 100644
+--- a/include/linux/kvm_host.h
++++ b/include/linux/kvm_host.h
+@@ -2570,4 +2570,12 @@ long kvm_arch_vcpu_pre_fault_memory(struct kvm_vcpu *vcpu,
+ 				    struct kvm_pre_fault_memory *range);
+ #endif
+ 
++#ifdef CONFIG_KVM_GENERIC_HARDWARE_ENABLING
++int kvm_enable_virtualization(void);
++void kvm_disable_virtualization(void);
++#else
++static inline int kvm_enable_virtualization(void) { return 0; }
++static inline void kvm_disable_virtualization(void) { }
++#endif
++
+ #endif
+diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
+index 54fa93ec7674..5cbfa933141b 100644
+--- a/virt/kvm/kvm_main.c
++++ b/virt/kvm/kvm_main.c
+@@ -143,8 +143,6 @@ static int kvm_no_compat_open(struct inode *inode, struct file *file)
+ #define KVM_COMPAT(c)	.compat_ioctl	= kvm_no_compat_ioctl,	\
+ 			.open		= kvm_no_compat_open
+ #endif
+-static int kvm_enable_virtualization(void);
+-static void kvm_disable_virtualization(void);
+ 
+ static void kvm_io_bus_destroy(struct kvm_io_bus *bus);
+ 
+@@ -5583,7 +5581,7 @@ static struct syscore_ops kvm_syscore_ops = {
+ 	.shutdown = kvm_shutdown,
+ };
+ 
+-static int kvm_enable_virtualization(void)
++int kvm_enable_virtualization(void)
+ {
+ 	int r;
+ 
+@@ -5628,8 +5626,9 @@ static int kvm_enable_virtualization(void)
+ 	--kvm_usage_count;
+ 	return r;
+ }
++EXPORT_SYMBOL_GPL(kvm_enable_virtualization);
+ 
+-static void kvm_disable_virtualization(void)
++void kvm_disable_virtualization(void)
+ {
+ 	guard(mutex)(&kvm_usage_lock);
+ 
+@@ -5640,6 +5639,7 @@ static void kvm_disable_virtualization(void)
+ 	cpuhp_remove_state(CPUHP_AP_KVM_ONLINE);
+ 	kvm_arch_disable_virtualization();
+ }
++EXPORT_SYMBOL_GPL(kvm_disable_virtualization);
+ 
+ static int kvm_init_virtualization(void)
+ {
+@@ -5655,21 +5655,11 @@ static void kvm_uninit_virtualization(void)
+ 		kvm_disable_virtualization();
+ }
+ #else /* CONFIG_KVM_GENERIC_HARDWARE_ENABLING */
+-static int kvm_enable_virtualization(void)
+-{
+-	return 0;
+-}
+-
+ static int kvm_init_virtualization(void)
+ {
+ 	return 0;
+ }
+ 
+-static void kvm_disable_virtualization(void)
+-{
+-
+-}
+-
+ static void kvm_uninit_virtualization(void)
+ {
+ 
+-- 
+2.25.1
+
